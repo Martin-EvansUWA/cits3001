@@ -13,7 +13,7 @@ def get_learning_action(q_table, state, epsilon, env):
     if random_int > epsilon:
         action = np.argmax(q_table[state[0]][state[1]][state[2]][state[3]])
     else:
-        x = random.choices(SIMPLE_MOVEMENT, (10,10,10,10,10,10,10))
+        x = random.choices(SIMPLE_MOVEMENT, (0,10,20,10,20,20,5))
         action = SIMPLE_MOVEMENT.index(x[0])
     return action
 
