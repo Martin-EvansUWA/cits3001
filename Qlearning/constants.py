@@ -5,7 +5,7 @@ LEARNING_ITERATIONS = 10000
 min_epsilon = 0.05
 max_epsilon = 1
 
-decay_rate = 0.0005
+decay_rate = 0.005
 
 gamma = 0.95
 
