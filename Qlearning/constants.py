@@ -11,4 +11,4 @@ gamma = 0.95
 
 learning_rate = 0.7
 
-max_steps = 100
+max_steps = 5000

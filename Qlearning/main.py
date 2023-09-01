@@ -5,7 +5,7 @@ import gym
 
 import numpy as np
 
-from state import obs_to_state
+from state import info_to_state
 from train import train_table
 
 from constants import min_epsilon, max_epsilon, decay_rate, gamma, learning_rate, max_steps
@@ -21,8 +21,8 @@ if __name__ == "__main__":
 
     # amount of simulations to improve the q-table
         # run a simulation
-    q_table = np.zeros(10,10,10000,10000)
-    train_table(q_table, 0.05, 1, 0.0005, 0.9 )
+    q_table = np.zeros((2,2,10000,10000, env.action_space.n))
+    train_table(1000, min_epsilon, max_epsilon, decay_rate, gamma, learning_rate, env, max_steps, q_table )
     for step in range(1):
         if step % 5 == 0:
             action = 1

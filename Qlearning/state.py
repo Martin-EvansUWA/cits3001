@@ -4,9 +4,9 @@ def info_to_state(info):
     state = []
 
     # convert to list
-    state[0] = info['world']
-    state[1] = info['stage']
-    state[2] = info['y_pos']
-    state[3] = info['x_pos']
+    state.append(info['world'])
+    state.append(info['stage'])
+    state.append(info['y_pos'])
+    state.append(info['x_pos'])
     
     return state
