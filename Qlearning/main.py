@@ -8,10 +8,9 @@ import numpy as np
 from state import info_to_state
 from train import train_table
 
-import torch
 
 from constants import min_epsilon, max_epsilon, decay_rate, gamma, learning_rate, max_steps
-
+from save_qtable import save_qtable, load_qtable
 import random
 
 
@@ -26,11 +25,11 @@ if __name__ == "__main__":
 
     # amount of simulations to improve the q-table
         # run a simulation
-    q_table = np.zeros((5,5,10000,10000, env.action_space.n))
-    train_table(1000, min_epsilon, max_epsilon, decay_rate, gamma, learning_rate, env, max_steps, q_table )
+    q_table = np.zeros((2,2,10000,10000, env.action_space.n))
+    print(type(q_table))
+    train_table(2, min_epsilon, max_epsilon, decay_rate, gamma, learning_rate, env, max_steps, q_table )
     state = [1,1,79,40]
-
-    for step in range(5000):
+    for step in range(1000):
         if step % 5 == 0:
             action = np.argmax(q_table[state[0]][state[1]][state[2]][state[3]])
         print(f"Action Space: {env.action_space.sample()}")

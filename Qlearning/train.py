@@ -6,7 +6,7 @@ import gym
 import numpy as np
 
 import random
-from state import info_to_state
+from state import info_to_state, q_state
 
 def get_learning_action(q_table, state, epsilon, env):
     random_int = np.random.uniform(0,1)
@@ -17,8 +17,6 @@ def get_learning_action(q_table, state, epsilon, env):
         action = SIMPLE_MOVEMENT.index(x[0])
     return action
 
-def q_state(q_table, state):
-    return q_table[state[0]][state[1]][state[2]][state[3]]
 
 # train the q table
 def train_table(n_episodes, min_epsilon, max_epsilon, decay_rate, gamma, learning_rate, env: JoypadSpace, max_steps, q_table):
@@ -38,8 +36,7 @@ def train_table(n_episodes, min_epsilon, max_epsilon, decay_rate, gamma, learnin
             obs, reward, terminated, truncated, info = env.step(action)
             new_state = info_to_state(info)
 
-            q_table[state[0]][state[1]][state[2]][state[3]][action] =  q_table[state[0]][state[1]][state[2]][state[3]][action] + learning_rate * (reward + gamma * np.max(q_table[new_state[0]][new_state[1]][new_state[2]][new_state[3]]) - q_table[state[0]][state[1]][state[2]][state[3]][action])
-
+            q_state(q_table, state)[action] =  q_state(q_table,state)[action] + learning_rate * (reward + gamma * np.max(q_state(q_table,new_state)) - q_state(q_table,state)[action])
 
             done = terminated or truncated
             if done:
