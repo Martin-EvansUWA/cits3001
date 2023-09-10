@@ -10,7 +10,6 @@ from train import train_table
 
 
 from constants import min_epsilon, max_epsilon, decay_rate, gamma, learning_rate, max_steps
-from save_qtable import save_qtable, load_qtable
 import random
 
 
@@ -27,8 +26,10 @@ if __name__ == "__main__":
         # run a simulation
     q_table = np.zeros((2,2,10000,10000, env.action_space.n))
     print(type(q_table))
-    train_table(2, min_epsilon, max_epsilon, decay_rate, gamma, learning_rate, env, max_steps, q_table )
+    train_table(400, min_epsilon, max_epsilon, decay_rate, gamma, learning_rate, env, max_steps, q_table )
     state = [1,1,79,40]
+
+    input("Waiting for assessment...")
     for step in range(1000):
         if step % 5 == 0:
             action = np.argmax(q_table[state[0]][state[1]][state[2]][state[3]])

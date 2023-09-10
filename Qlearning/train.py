@@ -25,6 +25,7 @@ def train_table(n_episodes, min_epsilon, max_epsilon, decay_rate, gamma, learnin
 
     for episode in range(n_episodes):
         #initial state
+        print(f"Episode: {episode}")
         epsilon = min_epsilon + (max_epsilon - min_epsilon)*np.exp(-decay_rate*episode)
         env.reset()
         state = [1,1,79,40]
