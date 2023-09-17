@@ -1,28 +1,41 @@
 import torch
 from tensordict import TensorDict
-from torchrl.data import TensorDictReplayBuffer, LazyMemmapStorage, TensorDict
+from torchrl.data import TensorDictReplayBuffer, LazyMemmapStorage
 import numpy as np
 
+from network import MarioNetwork
+
 class MarioAgent:
-    def __init__(self, state_dim, action_dim):
+    def __init__(self, state_dim, action_dim, save_dir, scratch_dir):
 
         self.state_dim = state_dim
         self.action_dim = action_dim
+        self.save_dir = save_dir
+        self.scratch_dir = scratch_dir
 
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.target_net = MarioNetwork(state_dim, action_dim)
+        self.policy_net = MarioNetwork(state_dim, action_dim)
 
-        self.optimizer = torch.optim.Adam(self.net.parameters(), lr=0.00025)
-        self.loss_fn = torch.nn.SmoothL1Loss()
+        #self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = "cpu"
+
+        self.gamma = 0.9
 
         self.exploration_rate = 1
         self.exploration_rate_decay = 0.99999975
         self.exploration_rate_min = 0.1
 
-        self.memory = TensorDictReplayBuffer(storage=LazyMemmapStorage(100000, device=torch.device("cpu")))
+        self.memory = TensorDictReplayBuffer(storage=LazyMemmapStorage(10000, device=torch.device("cpu"),scratch_dir=self.scratch_dir))
         self.batch_size = 32
 
-        self.optimizer = torch.optim.Adam(self.net.parameters(), lr=0.00025)
+        self.optimizer = torch.optim.Adam(self.policy_net.parameters(), lr=0.00025)
         self.loss_fn = torch.nn.SmoothL1Loss()
+
+        self.curr_step = 0
+        self.save_distance = 40000
+
+
+        self.TAU = 0.005
 
     def act(self, state):
         # EXPLORE
@@ -30,9 +43,9 @@ class MarioAgent:
             action = np.random.randint(self.action_dim)
         #EXPLOIT
         else:
-            state = state.__array__()
+            state = state[0].__array__() if isinstance(state, tuple) else state.__array__()
             state = torch.tensor(state, device=self.device).unsqueeze(0)
-            action_values = self.net(state)
+            action_values = self.target_net(state)
             action = torch.argmax(action_values, axis=1).item()
 
         self.exploration_rate *= self.exploration_rate_decay
@@ -41,7 +54,15 @@ class MarioAgent:
         self.curr_step += 1
         return action
 
-    def cache(self, experience):
+    def cache(self, state, next_state, action, reward, done):
+
+        def first_if_tuple(x):
+            return x[0] if isinstance(x, tuple) else x
+        
+        state = first_if_tuple(state).__array__()
+        next_state = first_if_tuple(next_state).__array__()
+
+
         state = torch.tensor(state)
         next_state = torch.tensor(next_state)
         action = torch.tensor([action])
@@ -61,23 +82,52 @@ class MarioAgent:
     def q_update(self,state, next_state, action, reward, done):
         # get the loss value and propagate the network
         # current Q 
-        current_q = self.net(state, model="online")[
+        current_q = self.policy_net(state)[
             np.arange(0, self.batch_size), action
         ]
+        td_estimate = current_q
 
         # Target Q
-        target_q = self.net(state)
-        best_action = torch.argmax(target_q, axis=1)
 
+        next_state_Q = self.policy_net(next_state)
+        best_action = torch.argmax(next_state_Q, axis=1)
+        target_q = self.target_net(next_state)[
+            np.arange(0, self.batch_size), best_action
+        ]
+        # print(f"Best Action: {best_action}")
+        td_target = ((reward + (1 - done.float()) * self.gamma * target_q)).float()
 
-        loss = self.loss_fn(current_q, target_q)
-
+        loss = self.loss_fn(td_estimate, td_target)
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-        return loss.item()
 
 
     def learn(self):
+        # Sample from memory
+        state, next_state, action, reward, done = self.recall()
+
+        if self.curr_step % self.save_distance == 0:
+            self.save()
+
+        # update the table
+        self.q_update(state,next_state,action,reward,done)
+
+        # update target policies
+        target_net_state_dict = self.target_net.state_dict()
+        policy_net_state_dict = self.policy_net.state_dict()
+        for key in policy_net_state_dict:
+            target_net_state_dict[key] = policy_net_state_dict[key]*self.TAU + target_net_state_dict[key]*(1-self.TAU)
+        self.target_net.load_state_dict(target_net_state_dict)
         """Update online action value (Q) function with a batch of experiences"""
-        pass
+
+
+    def save(self):
+        save_path = (
+            self.save_dir +  f"/mario_net_{int(self.curr_step // self.save_distance)}.chkpt"
+        )
+        torch.save(
+            dict(model=self.target_net.state_dict(), exploration_rate=self.exploration_rate),
+            save_path,
+        )
+        print(f"Mario  Network saved to {save_path} at step {self.curr_step}")
