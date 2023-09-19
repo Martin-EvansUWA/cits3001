@@ -5,12 +5,22 @@ import gym
 import math
 import random
 
+#MOVE SEQUENCE
+#0: ['NOOP']
+#1: ['right'
+#2: ['right', 'A']
+#3: ['right', 'B']
+#4: ['right', 'A', 'B']
+#5: ['A']
+#6: ['left']]
+
 from gym.spaces import Box
 
 
 EXPLORATIONCONSTANT = 0.5
-DEPTHLIMIT = 5
-NUMBEROFSIMULATIONS = 20
+DEPTHLIMIT = 15
+NUMBEROFSIMULATIONS = 10
+#Was working with 5, 20, but for long paths the 20 sims took ages
 
 class SkipFrame(gym.Wrapper):
     def __init__(self, env, skip):
@@ -169,8 +179,7 @@ def limitedSimulation(self, env):
         #print(terminated)
         returnValue = returnValue + reward
         if terminated == True:
-            print("Done during simulation")
-            break
+            print("Dead during simulation (Check its not at goal lol)")
         count += 1
 
     return returnValue
@@ -296,10 +305,12 @@ def test():
         chosen_child = policy(current)
         
         print("CHOSEN MOVE", chosen_child.move_sequence[-1])
+        print("NEW MOVE SEQUENCE", chosen_child.move_sequence)
         env.reset()
         for move in chosen_child.move_sequence:
             obs, reward, terminated, truncated, info = env.step(move)
             #getting to new position
+        
 
         current = chosen_child
 
