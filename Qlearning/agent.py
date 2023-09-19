@@ -39,7 +39,6 @@ class MarioAgent:
         self.curr_step = 0
         self.save_distance = 40000
 
-
         self.TAU = 0.005
 
     def act(self, state):
@@ -59,8 +58,19 @@ class MarioAgent:
         self.curr_step += 1
         return action
 
-    def cache(self, state, next_state, action, reward, done):
+    # Save Memory to path
+    def save(self):
+        save_path = (
+            self.save_dir +  f"/mario_net_{int(self.curr_step // self.save_distance)}.chkpt"
+        )
+        torch.save(
+            dict(model=self.target_net.state_dict(), exploration_rate=self.exploration_rate),
+            save_path,
+        )
+        print(f"Mario  Network saved to {save_path} at step {self.curr_step}")
 
+    def cache(self, state, next_state, action, reward, done):
+        # Save the current experience information to buffer for future learning
         def first_if_tuple(x):
             return x[0] if isinstance(x, tuple) else x
         
@@ -84,6 +94,7 @@ class MarioAgent:
         # self.memory.append((state, next_state, action, reward, done,))
         self.memory.add(TensorDict({"state": state, "next_state": next_state, "action": action, "reward": reward, "done": done}, batch_size=[]))
 
+    # Returns an experience from memory
     def recall(self):
         batch = self.memory.sample(self.batch_size).to(self.device)
         state, next_state, action, reward, done = (batch.get(key) for key in ("state", "next_state", "action", "reward", "done"))
@@ -91,6 +102,7 @@ class MarioAgent:
 
 
 
+    # Update the current q_network, via loss derived from bellman's
     def q_update(self,state, next_state, action, reward, done):
         # get the loss value and propagate the network
         # current Q 
@@ -99,16 +111,16 @@ class MarioAgent:
         ]
         td_estimate = current_q
 
-        # Target Q
-        with torch.no_grad():
-            next_state_Q = self.policy_net(next_state)
-            best_action = torch.argmax(next_state_Q, axis=1)
-            target_q = self.target_net(next_state)[
-                np.arange(0, self.batch_size), best_action
-            ]
-        # print(f"Best Action: {best_action}")
+        # Target Q, e.g. 
+        next_state_Q = self.policy_net(next_state)
+        best_action = torch.argmax(next_state_Q, axis=1)
+        target_q = self.target_net(next_state)[
+            np.arange(0, self.batch_size), best_action
+        ]
         td_target = ((reward + (1 - done.float()) * self.gamma * target_q)).float()
 
+
+        # Update q_network
         loss = self.loss_fn(td_estimate, td_target)
         self.optimizer.zero_grad()
         loss.backward()
@@ -119,27 +131,18 @@ class MarioAgent:
         # Sample from memory
         state, next_state, action, reward, done = self.recall()
 
+
+        # Save network to disk
         if self.curr_step % self.save_distance == 0:
             self.save()
 
-        # update the table
+        # Update the table
         self.q_update(state,next_state,action,reward,done)
 
-        # update target policies
+        # Update target policies
         target_net_state_dict = self.target_net.state_dict()
         policy_net_state_dict = self.policy_net.state_dict()
         for key in policy_net_state_dict:
             target_net_state_dict[key] = policy_net_state_dict[key]*self.TAU + target_net_state_dict[key]*(1-self.TAU)
         self.target_net.load_state_dict(target_net_state_dict)
-        """Update online action value (Q) function with a batch of experiences"""
 
-
-    def save(self):
-        save_path = (
-            self.save_dir +  f"/mario_net_{int(self.curr_step // self.save_distance)}.chkpt"
-        )
-        torch.save(
-            dict(model=self.target_net.state_dict(), exploration_rate=self.exploration_rate),
-            save_path,
-        )
-        print(f"Mario  Network saved to {save_path} at step {self.curr_step}")

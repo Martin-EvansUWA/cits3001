@@ -7,6 +7,7 @@ from torchvision import transforms as T
 import numpy as np
 
 
+# Skip / Compress frames into a stack of n frames
 class SkipFrame(gym.Wrapper):
     def __init__(self, env, skip):
         """Return only every `skip`-th frame"""
@@ -24,7 +25,7 @@ class SkipFrame(gym.Wrapper):
                 break
         return obs, total_reward, done, trunk, info
 
-
+# Convert image to grayscale image
 class GrayScaleObservation(gym.ObservationWrapper):
     def __init__(self, env):
         super().__init__(env)
@@ -44,6 +45,7 @@ class GrayScaleObservation(gym.ObservationWrapper):
         return observation
 
 
+# Resize obs into an specified image size
 class ResizeObservation(gym.ObservationWrapper):
     def __init__(self, env, shape):
         super().__init__(env)
