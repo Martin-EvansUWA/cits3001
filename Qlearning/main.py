@@ -31,9 +31,8 @@ if __name__ == "__main__":
     env.reset()
 
     # Setup Agent
-    os.mkdir("./tmp")
     mario = MarioAgent(state_dim=(4, 84, 84), action_dim=env.action_space.n, save_dir="./network_log", scratch_dir="./tmp")
-    num_episodes = 1000
+    num_episodes = 100
 
     mario.save()
 
@@ -61,4 +60,4 @@ if __name__ == "__main__":
                 break
         
     env.close()
-    os.rmdir("./tmp")
+    mario.save()

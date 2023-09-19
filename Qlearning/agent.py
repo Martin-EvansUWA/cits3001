@@ -13,11 +13,16 @@ class MarioAgent:
         self.save_dir = save_dir
         self.scratch_dir = scratch_dir
 
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+
+
         self.target_net = MarioNetwork(state_dim, action_dim)
         self.policy_net = MarioNetwork(state_dim, action_dim)
 
-        #self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.device = "cpu"
+        if self.device == "cuda":
+            self.policy_net = self.policy_net.cuda()
+            self.target_net = self.target_net.cuda()
+
 
         self.gamma = 0.9
 
@@ -69,6 +74,13 @@ class MarioAgent:
         reward = torch.tensor([reward])
         done = torch.tensor([done])
 
+        if self.device == "cuda":
+            state = state.to("cuda")
+            next_state = next_state.to("cuda")
+            action = action.to("cuda")
+            reward = reward.to("cuda")
+            done = done.to("cuda")
+
         # self.memory.append((state, next_state, action, reward, done,))
         self.memory.add(TensorDict({"state": state, "next_state": next_state, "action": action, "reward": reward, "done": done}, batch_size=[]))
 
@@ -88,12 +100,12 @@ class MarioAgent:
         td_estimate = current_q
 
         # Target Q
-
-        next_state_Q = self.policy_net(next_state)
-        best_action = torch.argmax(next_state_Q, axis=1)
-        target_q = self.target_net(next_state)[
-            np.arange(0, self.batch_size), best_action
-        ]
+        with torch.no_grad():
+            next_state_Q = self.policy_net(next_state)
+            best_action = torch.argmax(next_state_Q, axis=1)
+            target_q = self.target_net(next_state)[
+                np.arange(0, self.batch_size), best_action
+            ]
         # print(f"Best Action: {best_action}")
         td_target = ((reward + (1 - done.float()) * self.gamma * target_q)).float()
 
