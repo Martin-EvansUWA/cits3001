@@ -9,7 +9,8 @@ from gym.spaces import Box
 
 
 EXPLORATIONCONSTANT = 0.5
-DEPTHLIMIT = 100000
+DEPTHLIMIT = 5
+NUMBEROFSIMULATIONS = 20
 
 class SkipFrame(gym.Wrapper):
     def __init__(self, env, skip):
@@ -93,7 +94,7 @@ class Node:
             parent_node = parent_node.parent
             
         # We use one of the possible MCTS formula for calculating the node value
-        return (self.total_reward / self.visitcount) + EXPLORATIONCONSTANT * math.sqrt(math.loge(parent_node.visitcount) / self.visitcount)
+        return (self.total_reward / self.visitcount) + EXPLORATIONCONSTANT * math.sqrt(math.log(parent_node.visitcount) / self.visitcount)
 
     def create_childDict(self):
         
@@ -108,29 +109,32 @@ class Node:
     
         actions = []
         envs = []
+
         for i in range(len(SIMPLE_MOVEMENT)):
             actions.append(i)          
-            
-        print("ACTIONS:", actions)
+
         childDict = {} 
 
         for child_action in actions:
-            env.reset()
-            print("PARENT MOVE SEQ", self.move_sequence)
+            
+            '''env.reset()
+            #print("PARENT MOVE SEQ", self.move_sequence)
             for move in self.move_sequence:
                 obs, reward, terminated, truncated, info = env.step(move)
                 #getting back to parent position
             obs, reward, terminated, truncated, info = env.step(child_action)
             #applying next move
+            '''
 
             child_move_sequence = self.move_sequence.copy()
             child_move_sequence.append(child_action)
-            print("CHILD MOVE SEQ", child_move_sequence)
+            #print("CHILD MOVE SEQ", child_move_sequence)
             
 
-            print("X_POS", info["x_pos"], " ACTION: ", child_action)
-            print("Y_POS", info["y_pos"], " ACTION: ", child_action)
-            childDict[child_action] = Node(child_move_sequence, terminated, self, obs, child_action)
+            #print("X_POS", info["x_pos"], " ACTION: ", child_action)
+            #print("Y_POS", info["y_pos"], " ACTION: ", child_action)
+            #childDict[child_action] = Node(child_move_sequence, terminated, self, obs, child_action)
+            childDict[child_action] = Node(child_move_sequence, False, self, None, child_action)
             #creates a entry in the childDict for every possible move                
             
         self.childDict = childDict
@@ -139,6 +143,7 @@ class Node:
 def limitedSimulation(self, env):
     #This part might need to be changed from random to not random
     
+    print("Simulating starting from sequence", self.move_sequence)
     #Checks leaf is not goal
     if self.terminated == True:
         print("terminated")
@@ -149,19 +154,19 @@ def limitedSimulation(self, env):
 
     returnValue = 0
     env.reset()
-    print("MOVE SEQ", self.move_sequence)
+    #print("MOVE SEQ", self.move_sequence)
     for move in self.move_sequence:
         obs, reward, terminated, truncated, info = env.step(move)
         #getting back to  position
-        print("POS NOW", info["x_pos"])
+        #print("POS NOW", info["x_pos"])
 
     count = 0
     while not terminated and count < DEPTHLIMIT:
-        print("MOVE #", count)
+        #print("MOVE #", count)
         move = env.action_space.sample()
-        print("Chosen rand MOVE ", move)
+        #print("Chosen rand MOVE ", move)
         obs, reward, terminated, truncated, info = env.step(move)
-        print(terminated)
+        #print(terminated)
         returnValue = returnValue + reward
         if terminated == True:
             print("Done during simulation")
@@ -176,47 +181,59 @@ def explore_world(self):
     node = self
     count = 0
         
-    while node.childDict == True: #checks the current node has children
-        print("Node has children after sequence:", node.action_index)
+    while not (node.childDict == None): #checks the current node has children
+        #print("Node has children after sequence:", node.action_index)
+        #print("CHILDDICT:", node.childDict)
         node: Node
 
         childDict = node.childDict
 
         #Find the UCB value of most favourable move
         bestUCB = float('-inf')
+        best_actions = []
         for childNode in childDict.values():
-            if childNode.getUCBscore() > bestUCB:
+            if childNode.getUCBscore() >= bestUCB:
                 bestUCB = childNode.getUCBscore()
+                
         print("BEST UCB:", bestUCB)
+
+        for childNode in childDict.values():
+            if childNode.getUCBscore() == bestUCB:
+                best_actions.append(childNode.move_sequence[-1])
+                print("Added child", childNode.move_sequence," with UCB:", childNode.getUCBscore())
         
 
         #A list should be constructed with all moves that result in the MAX ucb score
         #This is because multiple moves could share the same UCB result
-        best_actions = []
+        '''
         for child_move in childDict.keys():
             if childDict[child_move].getUCBscore == bestUCB:
-                best_actions.append(child_move)
+                best_actions.append(child_move)'''
         
         if len(best_actions) == 0:
             print("Eror no moves found", bestUCB)   #this check will be removed eventaulyl     
 
         #Of these moves, a random one is chosen, and the DFS continues
         next_action = random.choice(best_actions)                    
-        node = node[next_action]
+        node = node.childDict[next_action]
     
+    print("SELECTION PHASE OVER. SELECTED NODE = ", node.action_index)
     #END OF SELECTION. NODE IS THE SELECTED LEAF NODE. READY FOR EXPANSION
     
     #BEGINNING OF EXPANSION STAGE
     if node.visitcount == 0:
-        print("No visits at sequence:", node.action_index)
+        #print("No visits at sequence:", node.action_index)
+        print("EXPANSION PHASE OVER. SIMULATION BEING RAN FROM PARENT = ", node.action_index)
         node.total_reward = node.total_reward + limitedSimulation(node, env)
+        
     else:
-        print(node.visitcount, " visits at sequence:", node.action_index)
+        #print(node.visitcount, " visits at sequence:", node.action_index)
         node.create_childDict()
-        if node.childDict == True:
+        if not (node.childDict == None):
             node = random.choice(node.childDict)
             #select random child node for the simulation to begin at
         node.total_reward = node.total_reward + limitedSimulation(node, env)
+        print("EXPANSION PHASE OVER. SIMULATION BEING RAN FROM CHILD = ", node.action_index)
     
     node.visitcount = node.visitcount + 1
     #END OF EXPANSION STAGE
@@ -226,6 +243,7 @@ def explore_world(self):
     parent_node : Node
     parent_node = node
 
+    print("BACKPROP BEGIN. Reward will be updated by ", parent_node.total_reward)
     while parent_node.parent:
         parent_node = parent_node.parent
             
@@ -237,11 +255,59 @@ def explore_world(self):
     
     #BACKPROPAGATION UPDATING FINISHED
 
+def get_next_move(current):
+
+        max_reward = float('-inf')
+        best_children = []
+        print("CHILDDICT VALUES", current.childDict.values())
+        for child in current.childDict.values():
+            if child.total_reward >= max_reward:
+                print("CHILD with move ", child.move_sequence[-1], " has reward ", child.total_reward)
+                
+                max_reward = child.total_reward
+                
+        
+        for child in current.childDict.values():
+            if child.total_reward == max_reward:
+                best_children.append(child)
+        
+
+        if len(best_children) == 0:
+            print("ERROR NO BEST MOVE")
+        
+        chosen_child = random.choice(best_children)
+        return chosen_child
+    
+
+def policy(current):
+    for i in range (NUMBEROFSIMULATIONS):
+        explore_world(current)
+    chosen_child = get_next_move(current)
+    return chosen_child
+
+
 
 def test():
     obs, reward, terminated, truncated, info = env.step(0)
     topNode = Node([], terminated, None, obs, 0)
-    explore_world(topNode)
+    
+    current = topNode
+    while True: #FIX
+        chosen_child = policy(current)
+        
+        print("CHOSEN MOVE", chosen_child.move_sequence[-1])
+        env.reset()
+        for move in chosen_child.move_sequence:
+            obs, reward, terminated, truncated, info = env.step(move)
+            #getting to new position
+
+        current = chosen_child
+
+
+        
+
+        
+
 
     '''
     topNode.create_childDict()
