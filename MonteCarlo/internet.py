@@ -143,12 +143,12 @@ class Node:
 def limitedSimulation(self, env):
     #This part might need to be changed from random to not random
     
-    print("Simulating starting from sequence", self.move_sequence)
+    #print("Simulating starting from sequence", self.move_sequence)
     #Checks leaf is not goal
     if self.terminated == True:
-        print("terminated")
+        print("Dead")
         terminated = True
-        return 0   
+        return 0
     else: 
         terminated = False
 
@@ -195,12 +195,12 @@ def explore_world(self):
             if childNode.getUCBscore() >= bestUCB:
                 bestUCB = childNode.getUCBscore()
                 
-        print("BEST UCB:", bestUCB)
+        #print("BEST UCB:", bestUCB)
 
         for childNode in childDict.values():
             if childNode.getUCBscore() == bestUCB:
                 best_actions.append(childNode.move_sequence[-1])
-                print("Added child", childNode.move_sequence," with UCB:", childNode.getUCBscore())
+                #print("Added child", childNode.move_sequence," with UCB:", childNode.getUCBscore())
         
 
         #A list should be constructed with all moves that result in the MAX ucb score
@@ -217,13 +217,13 @@ def explore_world(self):
         next_action = random.choice(best_actions)                    
         node = node.childDict[next_action]
     
-    print("SELECTION PHASE OVER. SELECTED NODE = ", node.action_index)
+    #print("SELECTION PHASE OVER. SELECTED NODE = ", node.action_index)
     #END OF SELECTION. NODE IS THE SELECTED LEAF NODE. READY FOR EXPANSION
     
     #BEGINNING OF EXPANSION STAGE
     if node.visitcount == 0:
         #print("No visits at sequence:", node.action_index)
-        print("EXPANSION PHASE OVER. SIMULATION BEING RAN FROM PARENT = ", node.action_index)
+        #print("EXPANSION PHASE OVER. SIMULATION BEING RAN FROM PARENT = ", node.action_index)
         node.total_reward = node.total_reward + limitedSimulation(node, env)
         
     else:
@@ -233,7 +233,7 @@ def explore_world(self):
             node = random.choice(node.childDict)
             #select random child node for the simulation to begin at
         node.total_reward = node.total_reward + limitedSimulation(node, env)
-        print("EXPANSION PHASE OVER. SIMULATION BEING RAN FROM CHILD = ", node.action_index)
+        #print("EXPANSION PHASE OVER. SIMULATION BEING RAN FROM CHILD = ", node.action_index)
     
     node.visitcount = node.visitcount + 1
     #END OF EXPANSION STAGE
@@ -243,7 +243,7 @@ def explore_world(self):
     parent_node : Node
     parent_node = node
 
-    print("BACKPROP BEGIN. Reward will be updated by ", parent_node.total_reward)
+    #print("BACKPROP BEGIN. Reward will be updated by ", parent_node.total_reward)
     while parent_node.parent:
         parent_node = parent_node.parent
             
