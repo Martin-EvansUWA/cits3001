@@ -18,9 +18,13 @@ from gym.spaces import Box
 
 
 EXPLORATIONCONSTANT = 0.5
-DEPTHLIMIT = 15
+DEPTHLIMIT = 5
 NUMBEROFSIMULATIONS = 10
+RECALCULATIONS = 3
 #Was working with 5, 20, but for long paths the 20 sims took ages
+
+non_simulated_deaths = 0
+#used to incrementally increase number of recalculations if keep dying on same thing
 
 class SkipFrame(gym.Wrapper):
     def __init__(self, env, skip):
@@ -56,7 +60,7 @@ class Node:
     '''
 
     #def __init__(self, move_sequence, env, terminated, parent, obs, action_index):
-    def __init__(self, move_sequence, terminated, parent, obs, action_index):
+    def __init__(self, move_sequence, terminated, parent, obs, action_index, info):
           
         # child nodes is a dictionary of child nodes which, for every possible action from that state, will tell us what the next state of the game is taking that action
         self.childDict = None
@@ -84,6 +88,9 @@ class Node:
         
         # action index that leads to this node
         self.action_index = action_index
+
+        #info index
+        self.info = info
 
     def getUCBscore(self):
         
@@ -126,25 +133,11 @@ class Node:
         childDict = {} 
 
         for child_action in actions:
-            
-            '''env.reset()
-            #print("PARENT MOVE SEQ", self.move_sequence)
-            for move in self.move_sequence:
-                obs, reward, terminated, truncated, info = env.step(move)
-                #getting back to parent position
-            obs, reward, terminated, truncated, info = env.step(child_action)
-            #applying next move
-            '''
 
             child_move_sequence = self.move_sequence.copy()
             child_move_sequence.append(child_action)
-            #print("CHILD MOVE SEQ", child_move_sequence)
-            
 
-            #print("X_POS", info["x_pos"], " ACTION: ", child_action)
-            #print("Y_POS", info["y_pos"], " ACTION: ", child_action)
-            #childDict[child_action] = Node(child_move_sequence, terminated, self, obs, child_action)
-            childDict[child_action] = Node(child_move_sequence, False, self, None, child_action)
+            childDict[child_action] = Node(child_move_sequence, False, self, None, child_action, None)
             #creates a entry in the childDict for every possible move                
             
         self.childDict = childDict
@@ -165,10 +158,13 @@ def limitedSimulation(self, env):
     returnValue = 0
     env.reset()
     #print("MOVE SEQ", self.move_sequence)
-    for move in self.move_sequence:
-        obs, reward, terminated, truncated, info = env.step(move)
-        #getting back to  position
-        #print("POS NOW", info["x_pos"])
+    if len(self.move_sequence) > 0:
+        for move in self.move_sequence:
+            obs, reward, terminated, truncated, info = env.step(move)
+            #getting back to  position
+            #print("POS NOW", info["x_pos"])
+        
+        self.info = info
 
     count = 0
     while not terminated and count < DEPTHLIMIT:
@@ -294,11 +290,30 @@ def policy(current):
     chosen_child = get_next_move(current)
     return chosen_child
 
+def check_child(potential_child):
+    try:
+        print("PARENT X POS:", potential_child.parent.info["x_pos"])
+        print("Child X POS:", potential_child.info["x_pos"])
 
+        if (potential_child.info["x_pos"] + 30) < potential_child.parent.info["x_pos"]:
+            #check that the character has not moved dramatically backwards (for now only implying death)
+
+            print("This move has pushed us to the left a lot. Recalculating the last ", RECALCULATIONS + non_simulated_deaths, "moves")
+            current = potential_child
+            for backstep in range (RECALCULATIONS + non_simulated_deaths):
+                current = current.parent
+            return current
+
+        else:
+            print("Child is fine")
+            return potential_child 
+    except:
+        print("top node. no parent")
+        return potential_child
 
 def test():
     obs, reward, terminated, truncated, info = env.step(0)
-    topNode = Node([], terminated, None, obs, 0)
+    topNode = Node([2, 2, 2, 3, 1, 1, 0, 5, 3, 1, 5, 0, 3, 1, 3, 0, 5, 4, 1, 2, 5, 5, 3, 3, 4, 5, 2, 3, 4, 1, 2, 6, 2, 6, 3, 3, 4, 5, 4, 5, 4, 5, 3, 5, 1, 4, 2, 5, 6, 5, 3, 6, 0, 3, 2, 4, 4, 6, 4, 6, 1, 5, 6, 6, 0, 6, 6, 5, 5, 6, 6, 2, 1, 4, 4, 2, 6, 0, 0, 0, 5, 1, 6, 1, 6, 1, 6, 2, 5, 1, 6, 5, 6, 6, 2, 3, 4, 5, 2, 0, 6, 1, 6, 4, 4, 6, 0, 1, 4, 6, 2, 0, 0, 6, 6, 1, 1, 6, 3, 0, 3, 6, 1, 6, 5, 0, 0, 1, 4, 6, 5, 2, 1, 6, 4, 5, 6, 0, 3, 2, 3, 2, 0, 6, 3, 0, 6, 4, 1, 6], terminated, None, None, 0, info)
     
     current = topNode
     while True: #FIX
@@ -311,24 +326,9 @@ def test():
             obs, reward, terminated, truncated, info = env.step(move)
             #getting to new position
         
+        chosen_child.info = info
 
-        current = chosen_child
-
-
-        
-
-        
-
-
-    '''
-    topNode.create_childDict()
-    for child in topNode.childDict.values():
-        child.create_childDict()
-    print(topNode.childDict[3].action_index)
-
-    for i in range (10):
-        explore_world(topNode)
-    '''
+        current = check_child(chosen_child)
 
 test()
 
