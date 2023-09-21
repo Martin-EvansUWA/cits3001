@@ -332,3 +332,13 @@ def test():
 
 test()
 
+'''
+FUNCTIONALITY TO BE ADDED
+- If death happens -> reversal of move(s)? Go backwards and pop from list? DONE
+- Saving a move array NEXT
+- Dealing with completion of level NEXT
+- Escaping maxima of shit - not death
+- What is truncation????
+- Something to do with obs
+'''
+
