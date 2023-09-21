@@ -112,11 +112,12 @@ class MarioAgent:
         td_estimate = current_q
 
         # Target Q, e.g. 
-        next_state_Q = self.policy_net(next_state)
-        best_action = torch.argmax(next_state_Q, axis=1)
-        target_q = self.target_net(next_state)[
-            np.arange(0, self.batch_size), best_action
-        ]
+        with torch.no_grad():
+            next_state_Q = self.policy_net(next_state)
+            best_action = torch.argmax(next_state_Q, axis=1)
+            target_q = self.target_net(next_state)[
+                np.arange(0, self.batch_size), best_action
+            ]
         td_target = ((reward + (1 - done.float()) * self.gamma * target_q)).float()
 
 

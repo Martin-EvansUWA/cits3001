@@ -7,6 +7,7 @@ from gym.wrappers.frame_stack import FrameStack
 import os
 
 import numpy as np
+import torch
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -32,32 +33,50 @@ if __name__ == "__main__":
 
     # Setup Agent
     mario = MarioAgent(state_dim=(4, 84, 84), action_dim=env.action_space.n, save_dir="./network_log", scratch_dir="./tmp")
-    num_episodes = 100
+    num_episodes = 1000
 
     mario.save()
-
-    # amount of simulations to improve the q-network
-    for episode in range(num_episodes):
-        
-        state = env.reset()
-        print(f"Episode: {episode}, Step: {mario.curr_step}")
-        while True:
-            action = mario.act(state)
-
-
-            next_state, reward, terminated, truncated, info = env.step(action)
-            """plt.imshow(next_state)
-            plt.show()"""
+    train = False
+    # amount of simulations to improve the q-network\
+    if train == True:
+        for episode in range(num_episodes):
+            
+            state = env.reset()
+            print(f"Episode: {episode}, Step: {mario.curr_step}")
+            while True:
+                action = mario.act(state)
 
 
-            mario.cache(state, next_state, action, reward, done)
-            mario.learn()
-            state = next_state
+                next_state, reward, terminated, truncated, info = env.step(action)
+                """plt.imshow(next_state)
+                plt.show()"""
+
+
+                mario.cache(state, next_state, action, reward, done)
+                mario.learn()
+                state = next_state
 
 
 
-            if terminated or info["flag_get"]:
-                break
+                if terminated or info["flag_get"]:
+                    break
+    else:
+        for i in range(5):
+            state = env.reset()
+
+            checkpoint = torch.load("./network_log/mario_net_25.chkpt")
+            mario.policy_net.load_state_dict(checkpoint["model"])
+            mario.policy_net.eval()
+            while True:
+                    action = mario.act(state)
+
+
+                    state, reward, terminated, truncated, info = env.step(action)
+                    """plt.imshow(next_state)
+                    plt.show()"""
+
+                    if terminated or info["flag_get"]:
+                        break
         
     env.close()
     mario.save()
