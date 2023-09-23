@@ -16,17 +16,6 @@ import random
 
 from gym.spaces import Box
 
-level_walkthroughs = [[] * 32]
-
-EXPLORATIONCONSTANT = 0.5
-DEPTHLIMIT = 5
-NUMBEROFSIMULATIONS = 10
-RECALCULATIONS = 3
-#Was working with 5, 20, but for long paths the 20 sims took ages
-
-non_simulated_deaths = 0
-#used to incrementally increase number of recalculations if keep dying on same thing
-
 class SkipFrame(gym.Wrapper):
     def __init__(self, env, skip):
         """Return only every `skip`-th frame"""
@@ -36,22 +25,31 @@ class SkipFrame(gym.Wrapper):
     def step(self, action):
         """Repeat action, and sum reward"""
         total_reward = 0.0
+        done = None
         for i in range(self._skip):
             # Accumulate reward and repeat the same action
             obs, reward, done, trunk, info = self.env.step(action)
             total_reward += reward
+            
+            
             if done:
+                print("DONE DURING 4peat after step", i)
                 break
         return obs, total_reward, done, trunk, info
 
 
 
-env = gym.make("SuperMarioBros-v0", apply_api_compatibility=True, render_mode="human")
-env = SkipFrame(env, skip=4)
-print(SIMPLE_MOVEMENT)
-env = JoypadSpace(env, SIMPLE_MOVEMENT)
-done = True
-env.reset()
+EXPLORATIONCONSTANT = 0.5
+DEPTHLIMIT = 5
+NUMBEROFSIMULATIONS = 10
+RECALCULATIONS = 3
+GOALREWARDBONUS = 60
+DEATHREWARDPENALTY = -30
+#Was working with 5, 20, but for long paths the 20 sims took ages
+
+non_simulated_deaths = 0
+#used to incrementally increase number of recalculations if keep dying on same thing
+
 
 class Node:
     
@@ -121,12 +119,8 @@ class Node:
         then we apply such action to a copy of the current node enviroment 
         and create such child node with proper information returned from the action executed
         '''
-        
-        if self.terminated:
-            return
     
         actions = []
-        envs = []
 
         for i in range(len(SIMPLE_MOVEMENT)):
             actions.append(i)          
@@ -138,7 +132,7 @@ class Node:
             child_move_sequence = self.move_sequence.copy()
             child_move_sequence.append(child_action)
 
-            childDict[child_action] = Node(child_move_sequence, False, self, None, child_action, None)
+            childDict[child_action] = Node(child_move_sequence, self.terminated, self, None, child_action, self.info)
             #creates a entry in the childDict for every possible move                
             
         self.childDict = childDict
@@ -149,25 +143,29 @@ def limitedSimulation(self, env):
     
     #print("Simulating starting from sequence", self.move_sequence)
     #Checks leaf is not goal
-    if self.terminated == True:
-        print("Dead")
-        terminated = True
-        return 0
-    else: 
-        terminated = False
 
     returnValue = 0
     env.reset()
+    info = {}
+    info["flag_get"] = False
     #print("MOVE SEQ", self.move_sequence)
     if len(self.move_sequence) > 0:
         for move in self.move_sequence:
-            obs, reward, terminated, truncated, info = env.step(move)
-            #getting back to  position
-            #print("POS NOW", info["x_pos"])
-        
-        self.info = info
+            #print("TERMINATED: ", terminated)
+
+            if self.info["flag_get"]:
+                print("goal reached before sim started")
+                return GOALREWARDBONUS
+            elif self.terminated == True:
+                print("dead before sim started")
+                return DEATHREWARDPENALTY
+            else:
+                obs, reward, self.terminated, truncated, self.info = env.step(move)
+                #getting back to  position
+                #print("POS NOW", info["x_pos"])
 
     count = 0
+    terminated = self.terminated
     while not terminated and count < DEPTHLIMIT:
         #print("MOVE #", count)
         move = env.action_space.sample()
@@ -175,13 +173,22 @@ def limitedSimulation(self, env):
         obs, reward, terminated, truncated, info = env.step(move)
         #print(terminated)
         returnValue = returnValue + reward
+
         if terminated == True:
-            print("Dead during simulation (Check its not at goal lol)")
+            if info["flag_get"]:
+                print("Reached goal during sim")
+                return reward + GOALREWARDBONUS
+
+            else:
+                print("Dead during simulation (Shouldnt be called for goal)")
+                return reward
+                #undecided if i want to incorporate my own penalty for death, becaause it shnould already have one (-15)
+            
         count += 1
 
     return returnValue
 
-def explore_world(self):
+def explore_world(self, env):
     
     #BEGINNING OF SELECTION STAGE
     node = self
@@ -285,9 +292,9 @@ def get_next_move(current):
         return chosen_child
     
 
-def policy(current):
+def policy(current, env):
     for i in range (NUMBEROFSIMULATIONS):
-        explore_world(current)
+        explore_world(current, env)
     chosen_child = get_next_move(current)
     return chosen_child
 
@@ -312,35 +319,49 @@ def check_child(potential_child):
         print("top node. no parent")
         return potential_child
 
-def main():
+def main(world, stage, level_index):
+
+    make_string = "SuperMarioBros-" + str(world) + "-" + str(stage) + "-v0"
+    env = gym.make(make_string, apply_api_compatibility=True, render_mode="human")
+    env = SkipFrame(env, skip=4)
+    print(SIMPLE_MOVEMENT)
+    env = JoypadSpace(env, SIMPLE_MOVEMENT)
+    done = True
+    env.reset()
+
     obs, reward, terminated, truncated, info = env.step(0)
-    topNode = Node([2, 2, 2, 3, 1, 1, 0, 5, 3, 1, 5, 0, 3, 1, 3, 0, 5, 4, 1, 2, 5, 5, 3, 3, 4, 5, 2, 3, 4, 1, 2, 6, 2, 6, 3, 3, 4, 5, 4, 5, 4, 5, 3, 5, 1, 4, 2, 5, 6, 5, 3, 6, 0, 3, 2, 4, 4, 6, 4, 6, 1, 5, 6, 6, 0, 6, 6, 5, 5, 6, 6, 2, 1, 4, 4, 2, 6, 0, 0, 0, 5, 1, 6, 1, 6, 1, 6, 2, 5, 1, 6, 5, 6, 6, 2, 3, 4, 5, 2, 0, 6, 1, 6, 4, 4, 6, 0, 1, 4, 6, 2, 0, 0, 6, 6, 1, 1, 6, 3, 0, 3, 6, 1, 6, 5, 0, 0, 1, 4, 6, 5, 2, 1, 6, 4, 5, 6, 0, 3, 2, 3, 2, 0, 6, 3, 0, 6, 4, 1, 6, 5, 1, 6, 4, 4, 6, 2, 6, 1, 0, 3, 0, 4, 2, 5, 2, 5, 3, 1, 3, 1, 4, 1, 3, 0, 2, 0, 4, 1, 2, 1, 3, 0, 0, 4, 5, 5, 1, 3, 3, 3, 1, 3, 2, 1, 2, 0, 3, 5, 4, 2, 4, 1, 5, 5, 1, 5, 0, 4, 5, 3, 5, 5, 4, 1, 0, 4, 4, 0, 4, 4, 2, 3, 3, 2, 2, 4, 5, 4, 3, 4, 0, 0, 4, 6, 2, 1, 1, 2, 4, 0, 2, 2, 1, 4, 0, 2, 0, 2, 5, 3, 5, 0, 2, 0, 6, 3, 2, 4, 6, 3, 4, 0, 2, 0, 5, 0, 3, 3, 6, 2, 0, 2, 2, 5, 2, 3, 1, 5, 4, 4, 5, 5, 1, 1, 2, 2, 1, 3, 5, 5, 4, 2, 5, 6, 2, 4, 2, 0, 5, 0, 2, 2, 5, 4, 0, 1, 1, 4, 1, 4, 4, 4, 0, 6, 2, 4, 1, 5, 6, 1, 6, 5, 2, 5, 4, 4, 5, 4, 3, 1, 3, 1, 0, 2, 5, 5, 3, 5, 0, 1, 3, 2, 0, 1, 1, 4, 4, 3, 1, 1, 1, 0, 0, 5, 3, 4, 5, 3, 4, 2, 0, 4, 1, 5, 5, 3, 6, 1, 3, 2, 0, 1, 5, 5, 1, 5, 4, 1, 2, 0, 3, 6, 2, 0, 0, 1, 1, 1, 4, 4, 2, 6, 1, 3, 2, 4, 3, 4, 4, 3, 4, 0, 1, 3, 0,5,4,3,2], terminated, None, None, 0, info)
+    topNode = Node([0], terminated, None, None, 0, info)
     
     current = topNode
     while True: #FIX
-        chosen_child = policy(current)
+        
+        chosen_child = policy(current, env)
         
         print("CHOSEN MOVE", chosen_child.move_sequence[-1])
         print("NEW MOVE SEQUENCE", chosen_child.move_sequence)
         env.reset()
+        terminated = False
         for move in chosen_child.move_sequence:
-            obs, reward, terminated, truncated, info = env.step(move)
+            if not terminated:
+                obs, reward, terminated, truncated, info = env.step(move)
             #getting to new position
         
+        chosen_child.terminated = terminated
         chosen_child.info = info
 
         child_level_index = chosen_child.info["stage"] * chosen_child.info["world"] - 1
-        parent_level_index = current.info["stage"] * current.info["world"] - 1
 
-        if (not child_level_index == parent_level_index):
+        print(chosen_child.info["flag_get"])
+        if (chosen_child.info["flag_get"]):
 
-            print("LEVEL", parent_level_index + 1 , "complete")
+            print("WORLD", world, "STAGE", stage, "complete")
 
-            print(current.move_sequence)
-            level_walkthroughs[parent_level_index] = current.move_sequence
-            print(level_walkthroughs[parent_level_index])
-            current = chosen_child
-            #some code to restart whole process 
+            print(chosen_child.move_sequence)
+            return chosen_child.move_sequence
+            #level_walkthroughs[parent_level_index] = current.move_sequence
+            #print(level_walkthroughs[parent_level_index])
+            #current = chosen_child
+
         else:
             current = check_child(chosen_child)
             env.reset()
@@ -350,9 +371,6 @@ def main():
 
         
 
-
-
-main()
 
 '''
 FUNCTIONALITY TO BE ADDED
