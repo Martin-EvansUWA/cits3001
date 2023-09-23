@@ -39,6 +39,8 @@ class MarioAgent:
         self.curr_step = 0
         self.save_distance = 40000
 
+        self.sync_value = 1000
+
         self.TAU = 0.005
 
     def act(self, state):
@@ -49,7 +51,7 @@ class MarioAgent:
         else:
             state = state[0].__array__() if isinstance(state, tuple) else state.__array__()
             state = torch.tensor(state, device=self.device).unsqueeze(0)
-            action_values = self.target_net(state)
+            action_values = self.policy_net(state)
             action = torch.argmax(action_values, axis=1).item()
 
         self.exploration_rate *= self.exploration_rate_decay
@@ -109,7 +111,7 @@ class MarioAgent:
         current_q = self.policy_net(state)[
             np.arange(0, self.batch_size), action
         ]
-        td_estimate = current_q
+        current = current_q
 
         # Target Q, e.g. 
         with torch.no_grad():
@@ -118,14 +120,17 @@ class MarioAgent:
             target_q = self.target_net(next_state)[
                 np.arange(0, self.batch_size), best_action
             ]
-        td_target = ((reward + (1 - done.float()) * self.gamma * target_q)).float()
+        target = ((reward + (1 - done.float()) * self.gamma * target_q)).float()
+
 
 
         # Update q_network
-        loss = self.loss_fn(td_estimate, td_target)
+        loss = self.loss_fn(current, target)
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+
+        return loss
 
 
     def learn(self):
@@ -137,13 +142,16 @@ class MarioAgent:
         if self.curr_step % self.save_distance == 0:
             self.save()
 
-        # Update the table
-        self.q_update(state,next_state,action,reward,done)
+        if self.curr_step % self.sync_value == 0:
+            # Update target policies
+            target_net_state_dict = self.target_net.state_dict()
+            policy_net_state_dict = self.policy_net.state_dict()
+            for key in policy_net_state_dict:
+                target_net_state_dict[key] = policy_net_state_dict[key]*self.TAU + target_net_state_dict[key]*(1-self.TAU)
+            self.target_net.load_state_dict(target_net_state_dict)
 
-        # Update target policies
-        target_net_state_dict = self.target_net.state_dict()
-        policy_net_state_dict = self.policy_net.state_dict()
-        for key in policy_net_state_dict:
-            target_net_state_dict[key] = policy_net_state_dict[key]*self.TAU + target_net_state_dict[key]*(1-self.TAU)
-        self.target_net.load_state_dict(target_net_state_dict)
+        # Update the table
+        loss = self.q_update(state,next_state,action,reward,done)
+        return loss
+        
 

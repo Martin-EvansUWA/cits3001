@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 
 from preprocess import SkipFrame, GrayScaleObservation, ResizeObservation
 from agent import MarioAgent
+from logger import MarioLogger
 
 if __name__ == "__main__":
     env_name = "SuperMarioBros-v0"
@@ -33,38 +34,38 @@ if __name__ == "__main__":
 
     # Setup Agent
     mario = MarioAgent(state_dim=(4, 84, 84), action_dim=env.action_space.n, save_dir="./network_log", scratch_dir="./tmp")
-    num_episodes = 1000
+    print(f"Device: {mario.device}...")
+    num_episodes = 20
+    mario_logger = MarioLogger()
 
     mario.save()
-    train = False
+    train = True
     # amount of simulations to improve the q-network\
     if train == True:
         for episode in range(num_episodes):
-            
+            mario_logger.init_episode()
             state = env.reset()
             print(f"Episode: {episode}, Step: {mario.curr_step}")
             while True:
                 action = mario.act(state)
-
-
                 next_state, reward, terminated, truncated, info = env.step(action)
-                """plt.imshow(next_state)
-                plt.show()"""
-
 
                 mario.cache(state, next_state, action, reward, done)
-                mario.learn()
+                loss = mario.learn()
                 state = next_state
 
 
-
+                mario_logger.log_step(reward,loss)
                 if terminated or info["flag_get"]:
                     break
+            mario_logger.log_episode(episode)
+        
+        mario_logger.save_logger()
     else:
         for i in range(5):
             state = env.reset()
 
-            checkpoint = torch.load("./network_log/mario_net_25.chkpt")
+            checkpoint = torch.load("./network_log/mario_net_3.chkpt")
             mario.policy_net.load_state_dict(checkpoint["model"])
             mario.policy_net.eval()
             while True:
