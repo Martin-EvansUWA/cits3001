@@ -54,7 +54,6 @@ if __name__ == "__main__":
                 loss = mario.learn()
                 state = next_state
 
-
                 mario_logger.log_step(reward,loss)
                 if terminated or info["flag_get"]:
                     break

@@ -3,7 +3,7 @@ from torch import nn
 class MarioNetwork(nn.Module):
 
     # "qnetwork"
-    def __init__(self, input_dim=(4,84,84), action_dim=84):
+    def __init__(self, input_dim=(4,84,84), action_dim=10):
         super().__init__()
         c, height, width = input_dim
 
@@ -15,16 +15,22 @@ class MarioNetwork(nn.Module):
         print(input_dim)
 
         self.q_network = nn.Sequential(
-            nn.Conv2d(in_channels=c, out_channels=32, kernel_size=8, stride=4),
+            nn.Conv2d(in_channels=c, out_channels=32, kernel_size=3, stride=1),
+            nn.Dropout(p=0.1),
+            nn.BatchNorm2d(32),
             nn.ReLU(),
-            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=2),
+            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1),
+            nn.Dropout(p=0.1),
+            nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1),
+            nn.Dropout(p=0.1),
+            nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(3136, 512),
+            nn.Linear(389376, 32),
             nn.ReLU(),
-            nn.Linear(512, action_dim),
+            nn.Linear(32, action_dim),
         )
 
 

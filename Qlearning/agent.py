@@ -5,6 +5,8 @@ import numpy as np
 
 from network import MarioNetwork
 
+import copy
+
 class MarioAgent:
     def __init__(self, state_dim, action_dim, save_dir, scratch_dir):
 
@@ -16,15 +18,11 @@ class MarioAgent:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-        self.target_net = MarioNetwork(state_dim, action_dim)
-        self.policy_net = MarioNetwork(state_dim, action_dim)
-
-        if self.device == "cuda":
-            self.policy_net = self.policy_net.cuda()
-            self.target_net = self.target_net.cuda()
+        self.target_net = MarioNetwork(state_dim, action_dim).to(self.device)
+        self.policy_net = copy.deepcopy(self.target_net)
 
 
-        self.gamma = 0.9
+        self.gamma = 0.99   
 
         self.exploration_rate = 1
         self.exploration_rate_decay = 0.99999975
@@ -49,13 +47,13 @@ class MarioAgent:
             action = np.random.randint(self.action_dim)
         #EXPLOIT
         else:
-            state = state[0].__array__() if isinstance(state, tuple) else state.__array__()
-            state = torch.tensor(state, device=self.device).unsqueeze(0)
-            action_values = self.policy_net(state)
-            action = torch.argmax(action_values, axis=1).item()
+            with torch.no_grad():
+                state = state[0].__array__() if isinstance(state, tuple) else state.__array__()
+                state = torch.tensor(state, device=self.device).unsqueeze(0)
+                action_values = self.policy_net(state)
+                action = torch.argmax(action_values, axis=1).item()
 
         self.exploration_rate *= self.exploration_rate_decay
-        self.exploration_rate = max(self.exploration_rate_min, self.exploration_rate)
 
         self.curr_step += 1
         return action
@@ -103,36 +101,6 @@ class MarioAgent:
         return state, next_state, action.squeeze(), reward.squeeze(), done.squeeze()
 
 
-
-    # Update the current q_network, via loss derived from bellman's
-    def q_update(self,state, next_state, action, reward, done):
-        # get the loss value and propagate the network
-        # current Q 
-        current_q = self.policy_net(state)[
-            np.arange(0, self.batch_size), action
-        ]
-        current = current_q
-
-        # Target Q, e.g. 
-        with torch.no_grad():
-            next_state_Q = self.policy_net(next_state)
-            best_action = torch.argmax(next_state_Q, axis=1)
-            target_q = self.target_net(next_state)[
-                np.arange(0, self.batch_size), best_action
-            ]
-        target = ((reward + (1 - done.float()) * self.gamma * target_q)).float()
-
-
-
-        # Update q_network
-        loss = self.loss_fn(current, target)
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-
-        return loss
-
-
     def learn(self):
         # Sample from memory
         state, next_state, action, reward, done = self.recall()
@@ -142,6 +110,7 @@ class MarioAgent:
         if self.curr_step % self.save_distance == 0:
             self.save()
 
+        
         if self.curr_step % self.sync_value == 0:
             # Update target policies
             target_net_state_dict = self.target_net.state_dict()
@@ -151,7 +120,29 @@ class MarioAgent:
             self.target_net.load_state_dict(target_net_state_dict)
 
         # Update the table
-        loss = self.q_update(state,next_state,action,reward,done)
+
+        current = self.policy_net(state)[
+            np.arange(0, self.batch_size), action
+        ]
+
+        # Target Q, e.g. 
+        with torch.no_grad():
+            next_state_Q = self.policy_net(next_state)
+            best_action = torch.argmax(next_state_Q,axis=1)
+            target_q = self.target_net(next_state)[
+                np.arange(0, self.batch_size), best_action
+            ]
+        
+        target = ((reward + (1 - done.float()) * self.gamma * target_q)).float()
+
+
+        # Update q_network
+        loss = self.loss_fn(current, target)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        print(f"Loss: {loss}")
         return loss
         
 
