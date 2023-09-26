@@ -298,12 +298,12 @@ def policy(current, env):
     chosen_child = get_next_move(current)
     return chosen_child
 
-def check_child(potential_child):
+'''def check_child(potential_child):
     try:
         print("PARENT X POS:", potential_child.parent.info["x_pos"])
         print("Child X POS:", potential_child.info["x_pos"])
 
-        if (potential_child.info["x_pos"] + 30) < potential_child.parent.info["x_pos"]:
+        if (potential_child.info["x_pos"] + 10) < potential_child.parent.info["x_pos"]:
             #check that the character has not moved dramatically backwards (for now only implying death)
 
             print("This move has pushed us to the left a lot. Recalculating the last ", RECALCULATIONS + non_simulated_deaths, "moves")
@@ -318,7 +318,7 @@ def check_child(potential_child):
     except:
         print("top node. no parent")
         return potential_child
-
+'''
 def main(world, stage, level_index):
 
     make_string = "SuperMarioBros-" + str(world) + "-" + str(stage) + "-v0"
@@ -330,7 +330,7 @@ def main(world, stage, level_index):
     env.reset()
 
     obs, reward, terminated, truncated, info = env.step(0)
-    topNode = Node([0], terminated, None, None, 0, info)
+    topNode = Node([0, 5, 2, 2, 4, 3, 4, 3, 0, 5, 3, 5, 2, 2, 2, 5, 3, 0, 5, 2, 2, 0, 2, 2, 4, 4, 4, 3, 5, 5, 5, 4, 2, 5, 4, 4, 1, 3, 2, 3, 0, 2, 0, 3, 2, 3, 1, 2, 5, 2, 2, 3, 6, 4, 4, 4, 5, 3, 0, 2, 3, 3, 6, 0, 0, 6, 0, 6, 0, 3, 5, 3, 5, 5, 0, 2, 1, 3, 6, 5, 5, 4, 2, 4, 4, 2, 4, 4, 4, 4, 1, 1, 1, 3, 5, 4, 1, 0, 1, 5, 3, 0, 2, 6, 0, 6, 2, 4, 4, 2, 2, 3, 4, 2, 2, 3, 4, 0, 2, 1, 2, 4, 0, 0, 5, 2, 4, 0, 0, 1, 1, 3, 0, 3, 2, 4, 2, 0, 3, 5, 0, 5, 1, 0, 5, 5, 4, 6, 2, 5, 2, 2, 2, 4, 2, 5, 1, 2, 1, 1, 3, 4, 4, 2, 2, 5, 5, 4, 4, 3, 3, 4, 5, 3, 0, 2, 2, 5, 2, 0, 0, 3, 5, 3, 3, 2, 5, 1, 4, 0, 3, 3, 1, 3, 5, 4, 1, 2, 0, 5, 5, 4, 5, 0, 5, 4, 5, 5, 3, 4, 3, 5, 4, 5, 1, 3, 4, 6, 2, 0, 2, 0, 5, 3, 4, 3, 0, 4, 2, 5, 1, 5, 5, 2, 3, 1, 5, 5, 5, 3, 3, 2, 3, 3, 4, 3, 2, 0, 0, 2, 1, 5, 2, 5, 4, 2, 4, 3, 3, 1, 4, 2, 4, 0, 2, 1, 6, 3, 0, 5, 2, 1, 2, 0, 1, 4, 3, 2, 5, 5, 4, 0, 2, 2, 6, 4, 4, 4, 2, 5, 3, 4, 3, 1, 2, 4, 2, 0, 0, 5, 3, 3, 2, 0, 4], terminated, None, None, 0, info)
     
     current = topNode
     while True: #FIX
@@ -363,7 +363,12 @@ def main(world, stage, level_index):
             #current = chosen_child
 
         else:
-            current = check_child(chosen_child)
+            if chosen_child.terminated == True:
+                for backstep in range (RECALCULATIONS + non_simulated_deaths):
+                    current = current.parent
+            else:
+                current = chosen_child
+            #current = check_child(chosen_child)
             env.reset()
             
 
