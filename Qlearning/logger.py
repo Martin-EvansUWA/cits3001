@@ -17,15 +17,20 @@ class MarioLogger:
         self.current_loss = 0
         self.current_length = 0
 
+        self.avg_loss = 0
+
+
     def init_episode(self):
         self.current_reward = 0
         self.current_loss = []
         self.current_length = 0
-    
+        self.avg_loss = 0
+
     def log_episode(self, ep):
+        self.avg_loss =sum(self.current_loss) / len(self.current_loss)
         self.ep_rewards.append(self.current_reward)
         self.ep_lengths.append(self.current_length)
-        self.avg_ep_loss.append(sum(self.current_loss) / len(self.current_loss))
+        self.avg_ep_loss.append(self.avg_loss)
         self.episodes.append(ep)
 
     def log_step(self, reward, loss):
@@ -34,7 +39,6 @@ class MarioLogger:
         self.current_length += 1
 
     def save_logger(self):
-        print(f"Total Rewards Per Ep: {self.ep_rewards}")
         plt.plot( np.array(self.episodes), np.array(self.ep_rewards))
         plt.savefig("avg_rewards.png")
 

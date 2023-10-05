@@ -18,13 +18,12 @@ class MarioAgent:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-        self.target_net = MarioNetwork(state_dim, action_dim).to(self.device)
-        self.policy_net = copy.deepcopy(self.target_net)
-
+        self.policy_net = MarioNetwork(state_dim, action_dim).to(self.device)
+        self.target_net = copy.deepcopy(self.policy_net)
 
         self.gamma = 0.99   
 
-        self.exploration_rate = 1
+        self.exploration_rate = 0.1
         self.exploration_rate_decay = 0.99999975
         self.exploration_rate_min = 0.1
 
@@ -41,9 +40,9 @@ class MarioAgent:
 
         self.TAU = 0.005
 
-    def act(self, state):
+    def act(self, state,eval=False):
         # EXPLORE
-        if np.random.rand() < self.exploration_rate:
+        if np.random.rand() < self.exploration_rate and eval==False:
             action = np.random.randint(self.action_dim)
         #EXPLOIT
         else:
@@ -53,8 +52,9 @@ class MarioAgent:
                 action_values = self.policy_net(state)
                 action = torch.argmax(action_values, axis=1).item()
 
-        self.exploration_rate *= self.exploration_rate_decay
 
+        self.exploration_rate *= self.exploration_rate_decay
+        self.exploration_rate = max(0.1,self.exploration_rate)
         self.curr_step += 1
         return action
 
@@ -64,12 +64,13 @@ class MarioAgent:
             self.save_dir +  f"/mario_net_{int(self.curr_step // self.save_distance)}.chkpt"
         )
         torch.save(
-            dict(model=self.target_net.state_dict(), exploration_rate=self.exploration_rate),
+            dict(model=self.policy_net.state_dict(), exploration_rate=self.exploration_rate),
             save_path,
         )
         print(f"Mario  Network saved to {save_path} at step {self.curr_step}")
 
     def cache(self, state, next_state, action, reward, done):
+
         # Save the current experience information to buffer for future learning
         def first_if_tuple(x):
             return x[0] if isinstance(x, tuple) else x
@@ -98,42 +99,24 @@ class MarioAgent:
     def recall(self):
         batch = self.memory.sample(self.batch_size).to(self.device)
         state, next_state, action, reward, done = (batch.get(key) for key in ("state", "next_state", "action", "reward", "done"))
-        return state, next_state, action.squeeze(), reward.squeeze(), done.squeeze()
+        return state, next_state, action, reward, done
 
 
     def learn(self):
         # Sample from memory
         state, next_state, action, reward, done = self.recall()
 
-
-        # Save network to disk
+        # Save network to disk  
         if self.curr_step % self.save_distance == 0:
             self.save()
 
-        
-        if self.curr_step % self.sync_value == 0:
-            # Update target policies
-            target_net_state_dict = self.target_net.state_dict()
-            policy_net_state_dict = self.policy_net.state_dict()
-            for key in policy_net_state_dict:
-                target_net_state_dict[key] = policy_net_state_dict[key]*self.TAU + target_net_state_dict[key]*(1-self.TAU)
-            self.target_net.load_state_dict(target_net_state_dict)
-
         # Update the table
 
-        current = self.policy_net(state)[
-            np.arange(0, self.batch_size), action
-        ]
+        # Q(s,a)
 
-        # Target Q, e.g. 
-        with torch.no_grad():
-            next_state_Q = self.policy_net(next_state)
-            best_action = torch.argmax(next_state_Q,axis=1)
-            target_q = self.target_net(next_state)[
-                np.arange(0, self.batch_size), best_action
-            ]
-        
-        target = ((reward + (1 - done.float()) * self.gamma * target_q)).float()
+        current = self.policy_net(state).gather(1,action.long())
+        # r + γ maxQ(S', a) 
+        target = reward + torch.mul((self.gamma * self.target_net(next_state).max(1).values.unsqueeze(1)), 1 - done.float())
 
 
         # Update q_network
@@ -142,7 +125,9 @@ class MarioAgent:
         loss.backward()
         self.optimizer.step()
 
-        print(f"Loss: {loss}")
+
+        for target_param, local_param in zip(self.target_net.parameters(), self.policy_net.parameters()):
+            target_param.data.copy_(self.TAU*local_param.data + (1.0-self.TAU)*target_param.data)
         return loss
         
 
