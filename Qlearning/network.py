@@ -1,5 +1,5 @@
-from torch import nn
 import torch
+from torch import nn
 import numpy as np
 
 class MarioNetwork(nn.Module):

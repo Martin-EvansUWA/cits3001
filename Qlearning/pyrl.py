@@ -100,7 +100,7 @@ from torchrl.data import TensorDictReplayBuffer, LazyMemmapStorage
 if gym.__version__ < '0.26':
     env = gym_super_mario_bros.make("SuperMarioBros-1-1-v0", new_step_api=True)
 else:
-    env = gym_super_mario_bros.make("SuperMarioBros-1-1-v0", render_mode='human', apply_api_compatibility=True)
+    env = gym_super_mario_bros.make("SuperMarioBros-1-1-v0", render_mode='rgb', apply_api_compatibility=True)
 
 # Limit the action-space to
 #   0. walk right
@@ -312,7 +312,7 @@ class Mario:
     ``action_idx`` (``int``): An integer representing which action Mario will perform
     """
         # EXPLORE
-        if np.random.rand() < self.exploration_rate and False:
+        if np.random.rand() < self.exploration_rate:
             action_idx = np.random.randint(self.action_dim)
 
         # EXPLOIT
@@ -350,7 +350,7 @@ class Mario:
 class Mario(Mario):  # subclassing for continuity
     def __init__(self, state_dim, action_dim, save_dir):
         super().__init__(state_dim, action_dim, save_dir)
-        self.memory = TensorDictReplayBuffer(storage=LazyMemmapStorage(100000, device=torch.device("cpu"),scratch_dir="./tmp"))
+        self.memory = TensorDictReplayBuffer(storage=LazyMemmapStorage(100000, device=torch.device("cpu"), scratch_dir= "./tmp"))
         self.batch_size = 32
 
     def cache(self, state, next_state, action, reward, done):
@@ -728,7 +728,6 @@ class MetricLogger:
 # In this example we run the training loop for 40 episodes, but for Mario to truly learn the ways of
 # his world, we suggest running the loop for at least 40,000 episodes!
 #
-
 use_cuda = torch.cuda.is_available()
 print(f"Using CUDA: {use_cuda}")
 print()
@@ -737,13 +736,10 @@ save_dir = Path("checkpoints") / datetime.datetime.now().strftime("%Y-%m-%dT%H-%
 save_dir.mkdir(parents=True)
 
 mario = Mario(state_dim=(4, 84, 84), action_dim=env.action_space.n, save_dir=save_dir)
-mario.exploration_rate = 0.1
-checkpoint = torch.load("./checkpoints/2023-09-28T14-32-30/mario_net_15.chkpt")
-mario.net.load_state_dict(checkpoint["model"])
-mario.net.eval()
-logger = MetricLogger(save_dir)  
 
-episodes = 40000
+logger = MetricLogger(save_dir)
+
+episodes = 1000000
 for e in range(episodes):
 
     state = env.reset()
@@ -758,13 +754,13 @@ for e in range(episodes):
         next_state, reward, done, trunc, info = env.step(action)
 
         # Remember
-        #mario.cache(state, next_state, action, reward, done)
+        mario.cache(state, next_state, action, reward, done)
 
         # Learn
-        #q, loss = mario.learn()
+        q, loss = mario.learn()
 
         # Logging
-        #logger.log_step(reward, loss, q)
+        logger.log_step(reward, loss, q)
 
         # Update state
         state = next_state
