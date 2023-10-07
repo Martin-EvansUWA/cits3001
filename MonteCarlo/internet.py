@@ -42,14 +42,10 @@ class SkipFrame(gym.Wrapper):
 EXPLORATIONCONSTANT = 0.5
 DEPTHLIMIT = 5
 NUMBEROFSIMULATIONS = 10
-RECALCULATIONS = 3
+INITIALRECALCULATIONS = 5
 GOALREWARDBONUS = 60
 DEATHREWARDPENALTY = -30
 #Was working with 5, 20, but for long paths the 20 sims took ages
-
-non_simulated_deaths = 0
-#used to incrementally increase number of recalculations if keep dying on same thing
-
 
 class Node:
     
@@ -67,12 +63,8 @@ class Node:
         # total rewards from MCTS exploration (sum of value of rollouts) - maybe use reward
         self.total_reward = 0
         
-        # visit count
         self.visitcount = 0        
-                
-        # the environment in current state
-       # self.env = env
-
+ 
         #the sequence of moves to get to this point
         self.move_sequence = move_sequence
         
@@ -191,13 +183,11 @@ def limitedSimulation(self, env):
 def explore_world(self, env):
     
     #BEGINNING OF SELECTION STAGE
+    node: Node
     node = self
     count = 0
         
     while not (node.childDict == None): #checks the current node has children
-        #print("Node has children after sequence:", node.action_index)
-        #print("CHILDDICT:", node.childDict)
-        node: Node
 
         childDict = node.childDict
 
@@ -207,31 +197,19 @@ def explore_world(self, env):
         for childNode in childDict.values():
             if childNode.getUCBscore() >= bestUCB:
                 bestUCB = childNode.getUCBscore()
-                
-        #print("BEST UCB:", bestUCB)
 
         for childNode in childDict.values():
             if childNode.getUCBscore() == bestUCB:
                 best_actions.append(childNode.move_sequence[-1])
-                #print("Added child", childNode.move_sequence," with UCB:", childNode.getUCBscore())
-        
-
-        #A list should be constructed with all moves that result in the MAX ucb score
-        #This is because multiple moves could share the same UCB result
-        '''
-        for child_move in childDict.keys():
-            if childDict[child_move].getUCBscore == bestUCB:
-                best_actions.append(child_move)'''
-        
+                
         if len(best_actions) == 0:
             print("Eror no moves found", bestUCB)   #this check will be removed eventaulyl     
 
         #Of these moves, a random one is chosen, and the DFS continues
         next_action = random.choice(best_actions)                    
         node = node.childDict[next_action]
-    
-    #print("SELECTION PHASE OVER. SELECTED NODE = ", node.action_index)
-    #END OF SELECTION. NODE IS THE SELECTED LEAF NODE. READY FOR EXPANSION
+
+    #END OF SELECTION. NODE IS THE SELECTED LEAF NODE
     
     #BEGINNING OF EXPANSION STAGE
     if node.visitcount == 0:
@@ -245,6 +223,8 @@ def explore_world(self, env):
         if not (node.childDict == None):
             node = random.choice(node.childDict)
             #select random child node for the simulation to begin at
+        else:
+            print("\n\n\n\n\nERROR\n\n\n\n\n\n")
         node.total_reward = node.total_reward + limitedSimulation(node, env)
         #print("EXPANSION PHASE OVER. SIMULATION BEING RAN FROM CHILD = ", node.action_index)
     
@@ -259,29 +239,25 @@ def explore_world(self, env):
     #print("BACKPROP BEGIN. Reward will be updated by ", parent_node.total_reward)
     while parent_node.parent:
         parent_node = parent_node.parent
-            
-        while parent_node.parent:
-            parent_node = parent_node.parent
-
-            parent_node.total_reward = parent_node.total_reward + node.total_reward
-            parent_node.visitcount += 1
+        
+        parent_node.total_reward = parent_node.total_reward + node.total_reward
+        parent_node.visitcount += 1
     
     #BACKPROPAGATION UPDATING FINISHED
 
 def get_next_move(current):
-
-        max_reward = float('-inf')
+        #i just changed it from reward to visit count
+        child : Node
+        max = float("-inf")
         best_children = []
-        print("CHILDDICT VALUES", current.childDict.values())
         for child in current.childDict.values():
-            if child.total_reward >= max_reward:
-                print("CHILD with move ", child.move_sequence[-1], " has reward ", child.total_reward)
-                
-                max_reward = child.total_reward
+            print("Move  ", child.move_sequence[-1], "   has reward   ", child.total_reward, "  with  ", child.visitcount, "  moves.")
+            if (child.total_reward / child.visitcount) >= max:
+                max = (child.total_reward / child.visitcount)
                 
         
         for child in current.childDict.values():
-            if child.total_reward == max_reward:
+            if (child.total_reward / child.visitcount) == max:
                 best_children.append(child)
         
 
@@ -291,48 +267,47 @@ def get_next_move(current):
         chosen_child = random.choice(best_children)
         return chosen_child
     
-
+def stuck(node):
+    ten_ago_node = node
+    for i in range(10):
+        ten_ago_node = ten_ago_node.parent
+        #moved less than 5 units right in 10 moves, time to escape backwards
+    return node.info["x_pos"] <= ten_ago_node.info["x_pos"] + 5
+    
 def policy(current, env):
     for i in range (NUMBEROFSIMULATIONS):
         explore_world(current, env)
     chosen_child = get_next_move(current)
     return chosen_child
 
-'''def check_child(potential_child):
-    try:
-        print("PARENT X POS:", potential_child.parent.info["x_pos"])
-        print("Child X POS:", potential_child.info["x_pos"])
-
-        if (potential_child.info["x_pos"] + 10) < potential_child.parent.info["x_pos"]:
-            #check that the character has not moved dramatically backwards (for now only implying death)
-
-            print("This move has pushed us to the left a lot. Recalculating the last ", RECALCULATIONS + non_simulated_deaths, "moves")
-            current = potential_child
-            for backstep in range (RECALCULATIONS + non_simulated_deaths):
-                current = current.parent
-            return current
-
-        else:
-            print("Child is fine")
-            return potential_child 
-    except:
-        print("top node. no parent")
-        return potential_child
-'''
-def main(world, stage, level_index):
+def main(world, stage, starting_sequence, mode):
+    
+    non_simulated_deaths = 0
+    escapes = 0
 
     make_string = "SuperMarioBros-" + str(world) + "-" + str(stage) + "-v0"
-    env = gym.make(make_string, apply_api_compatibility=True, render_mode="human")
+    env = gym.make(make_string, apply_api_compatibility=True, render_mode=mode)
     env = SkipFrame(env, skip=4)
     print(SIMPLE_MOVEMENT)
     env = JoypadSpace(env, SIMPLE_MOVEMENT)
     done = True
     env.reset()
 
+    #The following block of code allows me to run trials of learning with part of the route already cheated, for quicker testing 
+    #and not having to wait for mario to get up to the part i want to test every time.
+
+    node = []
     obs, reward, terminated, truncated, info = env.step(0)
-    topNode = Node([0, 5, 2, 2, 4, 3, 4, 3, 0, 5, 3, 5, 2, 2, 2, 5, 3, 0, 5, 2, 2, 0, 2, 2, 4, 4, 4, 3, 5, 5, 5, 4, 2, 5, 4, 4, 1, 3, 2, 3, 0, 2, 0, 3, 2, 3, 1, 2, 5, 2, 2, 3, 6, 4, 4, 4, 5, 3, 0, 2, 3, 3, 6, 0, 0, 6, 0, 6, 0, 3, 5, 3, 5, 5, 0, 2, 1, 3, 6, 5, 5, 4, 2, 4, 4, 2, 4, 4, 4, 4, 1, 1, 1, 3, 5, 4, 1, 0, 1, 5, 3, 0, 2, 6, 0, 6, 2, 4, 4, 2, 2, 3, 4, 2, 2, 3, 4, 0, 2, 1, 2, 4, 0, 0, 5, 2, 4, 0, 0, 1, 1, 3, 0, 3, 2, 4, 2, 0, 3, 5, 0, 5, 1, 0, 5, 5, 4, 6, 2, 5, 2, 2, 2, 4, 2, 5, 1, 2, 1, 1, 3, 4, 4, 2, 2, 5, 5, 4, 4, 3, 3, 4, 5, 3, 0, 2, 2, 5, 2, 0, 0, 3, 5, 3, 3, 2, 5, 1, 4, 0, 3, 3, 1, 3, 5, 4, 1, 2, 0, 5, 5, 4, 5, 0, 5, 4, 5, 5, 3, 4, 3, 5, 4, 5, 1, 3, 4, 6, 2, 0, 2, 0, 5, 3, 4, 3, 0, 4, 2, 5, 1, 5, 5, 2, 3, 1, 5, 5, 5, 3, 3, 2, 3, 3, 4, 3, 2, 0, 0, 2, 1, 5, 2, 5, 4, 2, 4, 3, 3, 1, 4, 2, 4, 0, 2, 1, 6, 3, 0, 5, 2, 1, 2, 0, 1, 4, 3, 2, 5, 5, 4, 0, 2, 2, 6, 4, 4, 4, 2, 5, 3, 4, 3, 1, 2, 4, 2, 0, 0, 5, 3, 3, 2, 0, 4], terminated, None, None, 0, info)
-    
-    current = topNode
+    temp = Node([starting_sequence[0]], terminated, None, None, 0, info)
+    node.append(temp)
+    for move in range (1, len(starting_sequence)):
+        obs, reward, terminated, truncated, info = env.step(starting_sequence[move])
+        temp = Node(starting_sequence[:move+1], False, node[move-1], None, starting_sequence[move], info)
+        node.append(temp)
+        node[move].create_childDict()
+    current = temp
+
+
     while True: #FIX
         
         chosen_child = policy(current, env)
@@ -351,23 +326,39 @@ def main(world, stage, level_index):
 
         child_level_index = chosen_child.info["stage"] * chosen_child.info["world"] - 1
 
-        print(chosen_child.info["flag_get"])
+        print("Flag reached: ", chosen_child.info["flag_get"])
         if (chosen_child.info["flag_get"]):
+            #Check for level completion
 
             print("WORLD", world, "STAGE", stage, "complete")
 
             print(chosen_child.move_sequence)
+            env.close()
             return chosen_child.move_sequence
+        
             #level_walkthroughs[parent_level_index] = current.move_sequence
             #print(level_walkthroughs[parent_level_index])
             #current = chosen_child
 
         else:
+            #Check for canonical death
             if chosen_child.terminated == True:
-                for backstep in range (RECALCULATIONS + non_simulated_deaths):
+                print("\n\nRecalculating last ", INITIALRECALCULATIONS + non_simulated_deaths, " moves due to DEATH\n\n")
+                for backstep in range (INITIALRECALCULATIONS + non_simulated_deaths):
                     current = current.parent
+                non_simulated_deaths = non_simulated_deaths + 1
             else:
-                current = chosen_child
+                if len(chosen_child.move_sequence) > 10:
+                    if stuck(chosen_child):
+                        print("\n\nRecalculating last ", INITIALRECALCULATIONS + escapes, " moves due to STUCK\n\n")
+                        for backstep in range (INITIALRECALCULATIONS + escapes):
+                            current = current.parent
+                        escapes = escapes + 2
+                    else:
+                        current = chosen_child
+                else:
+                    current = chosen_child
+                
             #current = check_child(chosen_child)
             env.reset()
             
@@ -380,8 +371,8 @@ def main(world, stage, level_index):
 '''
 FUNCTIONALITY TO BE ADDED
 - If death happens -> reversal of move(s)? Go backwards and pop from list? DONE
-- Saving a move array NEXT
-- Dealing with completion of level NEXT
+- Saving a move array DONE
+- Dealing with completion of level DONE
 - Escaping maxima of shit - not death
 - What is truncation????
 - Something to do with obs
