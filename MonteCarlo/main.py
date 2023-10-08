@@ -29,6 +29,8 @@ def main():
 
 
     for world in range (starting_world,9):
+        if not world <= starting_world:
+            starting_stage = 1
         for stage in range (starting_stage,5): 
             
             level_walkthroughs[world-1][stage-1] = internet.main(world, stage, starting_sequence, mode)
@@ -41,10 +43,20 @@ def main():
             f.write(str(level_walkthroughs[world-1][stage-1]))
             f.write("\n\n")
     
-        f.close()
+    f.close()
 
 
 
 if __name__ == '__main__':
     main()
+
+#Level checklist:
+#1,1 YES
+#1,2 YES
+#1,3 CANT
+#1,4 YES
+#2,1
+#2,2
+#2,3
+#2,4 YES
 
