@@ -24,12 +24,26 @@ def main():
     level_walkthroughs = [[[] for stage in range(4)] for world in range(8)]
     print(level_walkthroughs)
 
+    f = open("demofile.txt", "a")
+    f.write("\n\n\n\n")
+
 
     for world in range (starting_world,9):
         for stage in range (starting_stage,5): 
             
             level_walkthroughs[world-1][stage-1] = internet.main(world, stage, starting_sequence, mode)
             print("Talking from main. world ", world, "stage ", stage, "complete. The sequence to complete it is:", level_walkthroughs[world-1][stage-1])
+            f.write("WORLD: ")
+            f.write(str(world))
+            f.write(" STAGE: ")
+            f.write(str(stage))
+            f.write( " SOLUTION ")
+            f.write(str(level_walkthroughs[world-1][stage-1]))
+            f.write("\n\n")
+    
+        f.close()
+
+
 
 if __name__ == '__main__':
     main()

@@ -40,10 +40,10 @@ class SkipFrame(gym.Wrapper):
 
 
 EXPLORATIONCONSTANT = 0.5
-DEPTHLIMIT = 5
+DEPTHLIMIT = 15
 NUMBEROFSIMULATIONS = 10
 INITIALRECALCULATIONS = 5
-GOALREWARDBONUS = 60
+GOALREWARDBONUS = 200
 DEATHREWARDPENALTY = -30
 #Was working with 5, 20, but for long paths the 20 sims took ages
 
@@ -267,12 +267,12 @@ def get_next_move(current):
         chosen_child = random.choice(best_children)
         return chosen_child
     
-def stuck(node):
-    ten_ago_node = node
-    for i in range(10):
-        ten_ago_node = ten_ago_node.parent
-        #moved less than 5 units right in 10 moves, time to escape backwards
-    return node.info["x_pos"] <= ten_ago_node.info["x_pos"] + 5
+def stuck(node, escapes):
+    ago_node = node
+    for i in range(INITIALRECALCULATIONS + escapes):
+        ago_node = ago_node.parent
+        #if moved less than 5 units right in x moves, time to escape backwards
+    return node.info["x_pos"] <= ago_node.info["x_pos"] + 5
     
 def policy(current, env):
     for i in range (NUMBEROFSIMULATIONS):
@@ -298,7 +298,7 @@ def main(world, stage, starting_sequence, mode):
 
     node = []
     obs, reward, terminated, truncated, info = env.step(0)
-    temp = Node([starting_sequence[0]], terminated, None, None, 0, info)
+    temp = Node([starting_sequence[0]], terminated, None, None, starting_sequence[0], info)
     node.append(temp)
     for move in range (1, len(starting_sequence)):
         obs, reward, terminated, truncated, info = env.step(starting_sequence[move])
@@ -314,6 +314,7 @@ def main(world, stage, starting_sequence, mode):
         
         print("CHOSEN MOVE", chosen_child.move_sequence[-1])
         print("NEW MOVE SEQUENCE", chosen_child.move_sequence)
+        print("WORLD", world, "STAGE", stage)
         env.reset()
         terminated = False
         for move in chosen_child.move_sequence:
@@ -345,19 +346,26 @@ def main(world, stage, starting_sequence, mode):
             if chosen_child.terminated == True:
                 print("\n\nRecalculating last ", INITIALRECALCULATIONS + non_simulated_deaths, " moves due to DEATH\n\n")
                 for backstep in range (INITIALRECALCULATIONS + non_simulated_deaths):
+                    if current.parent == None:
+                            print("Top node reached. No more parents")
+                            break
                     current = current.parent
                 non_simulated_deaths = non_simulated_deaths + 1
             else:
-                if len(chosen_child.move_sequence) > 10:
-                    if stuck(chosen_child):
+                if len(current.move_sequence) > INITIALRECALCULATIONS + escapes:
+                    if stuck(chosen_child, escapes):
                         print("\n\nRecalculating last ", INITIALRECALCULATIONS + escapes, " moves due to STUCK\n\n")
                         for backstep in range (INITIALRECALCULATIONS + escapes):
+                            if current.parent == None:
+                                print("Top node reached. No more parents")
+                                break
                             current = current.parent
-                        escapes = escapes + 2
+                        escapes = escapes + 1
                     else:
                         current = chosen_child
                 else:
                     current = chosen_child
+                
                 
             #current = check_child(chosen_child)
             env.reset()
@@ -370,10 +378,7 @@ def main(world, stage, starting_sequence, mode):
 
 '''
 FUNCTIONALITY TO BE ADDED
-- If death happens -> reversal of move(s)? Go backwards and pop from list? DONE
-- Saving a move array DONE
-- Dealing with completion of level DONE
-- Escaping maxima of shit - not death
+- 
 - What is truncation????
 - Something to do with obs
 '''
