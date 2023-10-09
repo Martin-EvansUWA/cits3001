@@ -35,7 +35,7 @@ if __name__ == "__main__":
     # Setup Agent
     mario = MarioAgent(state_dim=(4, 84, 84), action_dim=env.action_space.n, save_dir="./network_log", scratch_dir="./tmp")
     print(f"Device: {mario.device}...")
-    num_episodes = 40000 if mario.device == "cuda" else 50
+    num_episodes = 1000000 if mario.device == "cuda" else 50
     mario_logger = MarioLogger()
 
     mario.save()
@@ -52,14 +52,14 @@ if __name__ == "__main__":
                 next_state, reward, terminated, truncated, info = env.step(action)
 
                 mario.cache(state, next_state, action, reward, done)
-                loss = mario.learn()
+                loss, q = mario.learn()
                 state = next_state
 
-                mario_logger.log_step(reward,loss)
-                if terminated or info["flag_get"]:
+                mario_logger.log_step(reward,loss, q)
+                if terminated or truncated:
                     break
             mario_logger.log_episode(episode)
-            print(f"Episode: {episode}, Step: {mario.curr_step}, Eps: {mario.exploration_rate}, Avg_Loss: {mario_logger.avg_loss}")\
+            print(f"Episode: {episode}, Step: {mario.curr_step}, Rewards: {mario_logger.current_reward}, Avg_q: {mario_logger.avg_q}, Avg_loss: {mario_logger.avg_loss}")
             
     else:
         for i in range(5):

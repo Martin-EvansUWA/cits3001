@@ -21,9 +21,13 @@ class MarioAgent:
         self.policy_net = MarioNetwork(state_dim, action_dim).to(self.device)
         self.target_net = copy.deepcopy(self.policy_net)
 
+        for p in self.target_net.parameters():
+            p.requires_grad = False
+
+
         self.gamma = 0.99   
 
-        self.exploration_rate = 0.1
+        self.exploration_rate = 1
         self.exploration_rate_decay = 0.99999975
         self.exploration_rate_min = 0.1
 
@@ -35,6 +39,9 @@ class MarioAgent:
 
         self.curr_step = 0
         self.save_distance = 40000
+
+        self.burnin = 1e4  # min. experiences before training
+        self.learn_every = 3 
 
         self.sync_value = 1000
 
@@ -99,7 +106,7 @@ class MarioAgent:
     def recall(self):
         batch = self.memory.sample(self.batch_size).to(self.device)
         state, next_state, action, reward, done = (batch.get(key) for key in ("state", "next_state", "action", "reward", "done"))
-        return state, next_state, action, reward, done
+        return state, next_state, action.squeeze(), reward.squeeze(), done.squeeze()
 
 
     def learn(self):
@@ -110,24 +117,36 @@ class MarioAgent:
         if self.curr_step % self.save_distance == 0:
             self.save()
 
+        if self.curr_step % self.sync_value == 0:
+            self.target_net.load_state_dict(self.policy_net.state_dict())
+
+        if self.curr_step < self.burnin:
+            return None, None
+
+        if self.curr_step % self.learn_every != 0:
+            return None, None
+
         # Update the table
 
         # Q(s,a)
+        current_Q = self.policy_net(state)[
+            np.arange(0, self.batch_size), action
+        ]  # Q_online(s,a)
 
-        current = self.policy_net(state).gather(1,action.long())
-        # r + γ maxQ(S', a) 
-        target = reward + torch.mul((self.gamma * self.target_net(next_state).max(1).values.unsqueeze(1)), 1 - done.float())
+        with torch.no_grad():
+            next_state_Q = self.policy_net(next_state)
+            best_action = torch.argmax(next_state_Q, axis=1)
+            next_Q = self.target_net(next_state)[
+                np.arange(0, self.batch_size), best_action
+            ]
+        
+        next_Q_values = (reward + (1 - done.float()) * self.gamma * next_Q).float()
 
-
-        # Update q_network
-        loss = self.loss_fn(current, target)
+        loss = self.loss_fn(current_Q, next_Q_values)
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 
-
-        for target_param, local_param in zip(self.target_net.parameters(), self.policy_net.parameters()):
-            target_param.data.copy_(self.TAU*local_param.data + (1.0-self.TAU)*target_param.data)
-        return loss
+        return loss, next_Q_values.mean().item()
         
 
