@@ -212,9 +212,8 @@ def explore_world(self, env):
     #END OF SELECTION. NODE IS THE SELECTED LEAF NODE
     
     #BEGINNING OF EXPANSION STAGE
+
     if node.visitcount == 0:
-        #print("No visits at sequence:", node.action_index)
-        #print("EXPANSION PHASE OVER. SIMULATION BEING RAN FROM PARENT = ", node.action_index)
         node.total_reward = node.total_reward + limitedSimulation(node, env)
         
     else:
@@ -226,9 +225,9 @@ def explore_world(self, env):
         else:
             print("\n\n\n\n\nERROR\n\n\n\n\n\n")
         node.total_reward = node.total_reward + limitedSimulation(node, env)
-        #print("EXPANSION PHASE OVER. SIMULATION BEING RAN FROM CHILD = ", node.action_index)
-    
+
     node.visitcount = node.visitcount + 1
+    
     #END OF EXPANSION STAGE
 
     #UPDATE WITH BACKPROPAGATION
@@ -271,8 +270,11 @@ def stuck(node, escapes):
     ago_node = node
     for i in range(INITIALRECALCULATIONS + escapes):
         ago_node = ago_node.parent
-        #if moved less than 5 units right in x moves, time to escape backwards
-    return node.info["x_pos"] <= ago_node.info["x_pos"] + 5
+        #if not moved right in x moves, escape backwards
+        #the 'and' check ensures its not moving dramatically back (e.g. due to a pipe), which is fine
+    print("current x pos: ", node.info["x_pos"])
+    print("x position from ", INITIALRECALCULATIONS + escapes, " moves ago: ", ago_node.info["x_pos"])
+    return node.info["x_pos"] <= ago_node.info["x_pos"] and node.info["x_pos"] > ago_node.info["x_pos"] - 15
     
 def policy(current, env):
     for i in range (NUMBEROFSIMULATIONS):

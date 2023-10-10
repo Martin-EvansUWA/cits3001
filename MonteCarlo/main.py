@@ -56,7 +56,8 @@ if __name__ == '__main__':
 #1,3 CANT
 #1,4 YES
 #2,1 YES
-#2,2
-#2,3
+#2,2 YES
+#2,3 YES
 #2,4 YES
+#3,1 NOT YET
 
