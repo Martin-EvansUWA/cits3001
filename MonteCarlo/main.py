@@ -8,10 +8,7 @@ import math
 import random
 import sys
 
-#FOR NOW: ARG FORMAT = [mode (rgb, human etc.), startingworld, startingstage]
-
-
-
+#ARG FORMAT = [mode ('rgb', 'human', ...), startingworld, startingstage]
 
 def main():
     args = sys.argv[1:]
@@ -22,18 +19,21 @@ def main():
     starting_sequence =  [0]
 
     level_walkthroughs = [[[] for stage in range(4)] for world in range(8)]
-    print(level_walkthroughs)
 
-    f = open("demofile.txt", "a")
+    f = open("levelwalkthroughs.txt", "a")
     f.write("\n\n\n\n")
 
 
     for world in range (starting_world,9):
+
         if not world <= starting_world:
             starting_stage = 1
+
         for stage in range (starting_stage,5): 
             
             level_walkthroughs[world-1][stage-1] = internet.main(world, stage, starting_sequence, mode)
+            
+            
             print("Talking from main. world ", world, "stage ", stage, "complete. The sequence to complete it is:", level_walkthroughs[world-1][stage-1])
             f.write("WORLD: ")
             f.write(str(world))
