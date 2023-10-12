@@ -46,6 +46,7 @@ class MarioLogger:
         if(self.current_episode % 20 == 0):
             self.reward_plot()
         self.current_episode += 1
+
     def log_step(self, reward, loss, q):
         self.current_reward += reward
         if loss != None:

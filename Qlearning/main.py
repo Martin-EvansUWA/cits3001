@@ -72,7 +72,6 @@ if __name__ == "__main__":
                     
                     action = mario.act(current_state, eval=True)
 
-
                     state, reward, terminated, truncated, info = env.step(action)
 
                     if terminated or info["flag_get"]:
