@@ -4,6 +4,7 @@ from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
 import gym
 import math
 import random
+import time
 
 #MOVE SEQUENCE
 #0: ['NOOP']
@@ -54,8 +55,7 @@ class Node:
     It contains the information needed for the algorithm to run its search.
     '''
 
-    #def __init__(self, move_sequence, env, terminated, parent, obs, action_index):
-    def __init__(self, move_sequence, terminated, parent, obs, action_index, info):
+    def __init__(self, move_sequence, terminated, parent, action_index, info):
           
         # child nodes is a dictionary of child nodes which, for every possible action from that state, will tell us what the next state of the game is taking that action
         self.childDict = None
@@ -67,9 +67,6 @@ class Node:
  
         #the sequence of moves to get to this point
         self.move_sequence = move_sequence
-        
-        # observation of the environment
-        self.obs = obs
         
         # if game is won/loss/draw
         self.terminated = terminated
@@ -124,7 +121,7 @@ class Node:
             child_move_sequence = self.move_sequence.copy()
             child_move_sequence.append(child_action)
 
-            childDict[child_action] = Node(child_move_sequence, self.terminated, self, None, child_action, self.info)
+            childDict[child_action] = Node(child_move_sequence, self.terminated, self, child_action, self.info)
             #creates a entry in the childDict for every possible move                
             
         self.childDict = childDict
@@ -300,17 +297,21 @@ def main(world, stage, starting_sequence, mode):
 
     node = []
     obs, reward, terminated, truncated, info = env.step(0)
-    temp = Node([starting_sequence[0]], terminated, None, None, starting_sequence[0], info)
+    temp = Node([starting_sequence[0]], terminated, None, starting_sequence[0], info)
     node.append(temp)
     for move in range (1, len(starting_sequence)):
         obs, reward, terminated, truncated, info = env.step(starting_sequence[move])
-        temp = Node(starting_sequence[:move+1], False, node[move-1], None, starting_sequence[move], info)
+        temp = Node(starting_sequence[:move+1], False, node[move-1], starting_sequence[move], info)
         node.append(temp)
         node[move].create_childDict()
     current = temp
 
+    #code for performance analysis 'time'
+    time_dict = {}
+    start_time = time.time()
+    time_distance_index = 200
 
-    while True: #FIX
+    while True:
         
         chosen_child = policy(current, env)
         
@@ -337,11 +338,7 @@ def main(world, stage, starting_sequence, mode):
 
             print(chosen_child.move_sequence)
             env.close()
-            return chosen_child.move_sequence
-        
-            #level_walkthroughs[parent_level_index] = current.move_sequence
-            #print(level_walkthroughs[parent_level_index])
-            #current = chosen_child
+            return chosen_child.move_sequence, time_dict
 
         else:
             #Check for canonical death
@@ -367,21 +364,15 @@ def main(world, stage, starting_sequence, mode):
                         current = chosen_child
                 else:
                     current = chosen_child
-                
-                
+
+            if(current.info["x_pos"] not in time_dict.keys() and current.info["x_pos"] >= time_distance_index):
+                print("saving ", time.time() - start_time, "to index: ", time_distance_index)
+                time_dict[time_distance_index] =  time.time() - start_time
+                time_distance_index += 200   
             #current = check_child(chosen_child)
+
+            if (current.info["x_pos"] > 650):
+                return chosen_child.move_sequence, time_dict
             env.reset()
             
-
-        
-
-        
-
-
-'''
-FUNCTIONALITY TO BE ADDED
-- 
-- What is truncation????
-- Something to do with obs
-'''
 
