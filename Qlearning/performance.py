@@ -24,7 +24,7 @@ import time
 if __name__ == "__main__":
     env_name = "SuperMarioBros-1-1-v0"
     env = gym.make(env_name, apply_api_compatibility=True, render_mode="rgb")
-    env = JoypadSpace(env, SIMPLE_MOVEMENT)
+    env = JoypadSpace(env, [["right"],["right","A"]])
 
     env = SkipFrame(env, skip=4)
     env = GrayScaleObservation(env)
@@ -37,16 +37,17 @@ if __name__ == "__main__":
     env.reset()
    
 
-    current_log = "time"
+    current_log = "steps"
     mario = MarioAgent(state_dim=(4, 84, 84), action_dim=env.action_space.n, save_dir="./network_log", scratch_dir="./tmp")
-    checkpoint = torch.load("./checkpoints/2023-09-28T14-32-30/mario_net_15.chkpt")
+    checkpoint = torch.load("mario_net_22.chkpt", map_location=torch.device("cpu"))
     mario.policy_net.load_state_dict(checkpoint["model"])
-    mario.policy_net.eval()
+    mario.policy_net.online.eval()
+    mario.policy_net.target.eval()
     print(f"Device: {mario.device}...")
     distance_index = 200
 
     
-
+    print(f"Testing: {current_log}")
     if current_log == "time":
         time_dict = {}
         start_time = time.time()
@@ -54,7 +55,7 @@ if __name__ == "__main__":
         # Setup Agent
         mario = MarioAgent(state_dim=(4, 84, 84), action_dim=env.action_space.n, save_dir="./network_log", scratch_dir="./tmp")
         print(f"Device: {mario.device}...")
-        while time.time() < start_time + 15(60):
+        while time.time() < start_time + 15*(60):
             current_state = env.reset() 
             while True:
                     action = mario.act(current_state)
@@ -70,22 +71,37 @@ if __name__ == "__main__":
                     
                     current_state = state
         # plot matplotlib
+
+        print(time_dict)
         values = sorted(time_dict.items())
         x, y = zip(*values)
+
+        print(x)
+
+        print()
+
+        print(y)
+        x = np.array(x)
+        y = np.array(y)
+
+        a, b = np.polyfit(x,y,1)
+        plt.scatter(x, y)
+        plt.plot(x,a*x+b)
 
         plt.title(" Time to reach certain distances.")
         plt.xlabel("Distance (x position)")
         plt.ylabel("Time taken (seconds)")
-        plt.plot(x,y)
+
         plt.show()
         plt.savefig("time_to_reach_certain_distances.png")
 
 
     if current_log == "steps":
         steps_dict = {}
-        n_episodes = 100
+        n_episodes = 10
         step_count = 0
         for episode in range(n_episodes):
+            print(f"Episode: {episode}")
             current_state = env.reset()
             while True:
                     action = mario.act(current_state)
@@ -105,16 +121,27 @@ if __name__ == "__main__":
         values = sorted(steps_dict.items())
         x, y = zip(*values)
 
+        print(x)
+
+        print()
+
+        print(y)
+        x = np.array(x)
+        y = np.array(y)
+
+        a, b = np.polyfit(x,y,1)
+        plt.scatter(x, y)
+        plt.plot(x,a*x+b)
+
         plt.title(" Numbers of moves taken to reach certain distances.")
         plt.xlabel("Distance (x position)")
         plt.ylabel("Number of moves taken (step)")
-        plt.plot(x,y)
         plt.show()
         plt.savefig("steps_to_reach_certain_distances.png")
 
     if current_log == "deaths":
         deaths_dict = {}
-        n_episodes = 100
+        n_episodes = 10
         death_count = 0
         for episode in range(n_episodes):
             current_state = env.reset()
@@ -136,11 +163,17 @@ if __name__ == "__main__":
         values = sorted(deaths_dict.items())
         x, y = zip(*values)
 
+        x = np.array(x)
+        y = np.array(y)
+
+        a, b = np.polyfit(x,y,1)
+        plt.scatter(x, y)
+        plt.plot(x,a*x+b)
+
         plt.title(" Deaths required to reach certain distances.")
         plt.xlabel("Distance (x position)")
         plt.ylabel("Times died (deaths)")
-        plt.plot(x,y)
-        plt.show()
+        
         plt.savefig("deaths_to_reach_certain_distances.png")
 
     if current_log == "score":
@@ -166,12 +199,17 @@ if __name__ == "__main__":
         values = sorted(score_dict.items())
         x, y = zip(*values)
 
+        x = np.array(x)
+        y = np.array(y)
+
+        a, b = np.polyfit(x,y,1)
+        plt.scatter(x, y)
+        plt.plot(x,a*x+b)
     
 
         plt.title("Mean score over distance")
         plt.xlabel("Distance (x position) ")
         plt.ylabel("Times died (deaths) ")
-        plt.plot(x,y)
         plt.show()
         plt.savefig("mean_score_at_certain_distances.png")
 
@@ -201,10 +239,16 @@ if __name__ == "__main__":
         values = sorted(time_dict.items())
         x, y = zip(*values)
 
+        x = np.array(x)
+        y = np.array(y)
+
+        a, b = np.polyfit(x,y,1)
+        plt.scatter(x, y)
+        plt.plot(x,a*x+b)
+
         plt.title(" Time to reach certain distances.")
         plt.xlabel("Distance (x position)")
         plt.ylabel("Time taken (seconds)")
-        plt.plot(x,y)
         plt.show()
         plt.savefig("time_to_reach_certain_distances.png")
     
@@ -239,10 +283,16 @@ if __name__ == "__main__":
         values = sorted(time_dict.items())
         x, y = zip(*values)
 
+        x = np.array(x)
+        y = np.array(y)
+
+        a, b = np.polyfit(x,y,1)
+        plt.scatter(x, y)
+        plt.plot(x,a*x+b)
+
         plt.title(" Time to reach certain distances.")
         plt.xlabel("Distance (x position)")
         plt.ylabel("Time taken (seconds)")
-        plt.plot(x,y)
         plt.show()
         plt.savefig("time_to_reach_certain_distances.png")
 
