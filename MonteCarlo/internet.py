@@ -17,6 +17,15 @@ import time
 
 from gym.spaces import Box
 
+EXPLORATIONCONSTANT = 0.5
+DEPTHLIMIT = 15
+NUMBEROFSIMULATIONS = 10
+INITIALRECALCULATIONS = 5
+GOALREWARDBONUS = 200
+DEATHREWARDPENALTY = -30
+
+
+
 class SkipFrame(gym.Wrapper):
     def __init__(self, env, skip):
         """Return only every `skip`-th frame"""
@@ -40,20 +49,14 @@ class SkipFrame(gym.Wrapper):
 
 
 
-EXPLORATIONCONSTANT = 0.5
-DEPTHLIMIT = 15
-NUMBEROFSIMULATIONS = 10
-INITIALRECALCULATIONS = 5
-GOALREWARDBONUS = 200
-DEATHREWARDPENALTY = -30
-#Was working with 5, 20, but for long paths the 20 sims took ages
-
 class Node:
     
     '''
     The Node class represents a node of the MCTS tree. 
     It contains the information needed for the algorithm to run its search.
     '''
+
+    
 
     def __init__(self, move_sequence, terminated, parent, action_index, info):
           
@@ -137,30 +140,32 @@ def limitedSimulation(self, env):
     env.reset()
     info = {}
     info["flag_get"] = False
-    #print("MOVE SEQ", self.move_sequence)
     if len(self.move_sequence) > 0:
         for move in self.move_sequence:
-            #print("TERMINATED: ", terminated)
 
             if self.info["flag_get"]:
                 print("goal reached before sim started")
                 return GOALREWARDBONUS
             elif self.terminated == True:
+                #for performance
+                deaths = deaths + 1
                 print("dead before sim started")
                 return DEATHREWARDPENALTY
             else:
                 obs, reward, self.terminated, truncated, self.info = env.step(move)
+                #performance
+                steps = steps + 1
                 #getting back to  position
-                #print("POS NOW", info["x_pos"])
+                
 
     count = 0
     terminated = self.terminated
     while not terminated and count < DEPTHLIMIT:
-        #print("MOVE #", count)
+
         move = env.action_space.sample()
-        #print("Chosen rand MOVE ", move)
         obs, reward, terminated, truncated, info = env.step(move)
-        #print(terminated)
+        #performance
+        steps = steps + 1
         returnValue = returnValue + reward
 
         if terminated == True:
@@ -170,6 +175,8 @@ def limitedSimulation(self, env):
 
             else:
                 print("Dead during simulation (Shouldnt be called for goal)")
+                #for performance
+                deaths = deaths + 1
                 return reward
                 #undecided if i want to incorporate my own penalty for death, becaause it shnould already have one (-15)
             
@@ -279,100 +286,149 @@ def policy(current, env):
     chosen_child = get_next_move(current)
     return chosen_child
 
-def main(world, stage, starting_sequence, mode):
-    
-    non_simulated_deaths = 0
-    escapes = 0
 
-    make_string = "SuperMarioBros-" + str(world) + "-" + str(stage) + "-v0"
-    env = gym.make(make_string, apply_api_compatibility=True, render_mode=mode)
-    env = SkipFrame(env, skip=4)
-    print(SIMPLE_MOVEMENT)
-    env = JoypadSpace(env, SIMPLE_MOVEMENT)
-    done = True
-    env.reset()
-
-    #The following block of code allows me to run trials of learning with part of the route already cheated, for quicker testing 
-    #and not having to wait for mario to get up to the part i want to test every time.
-
-    node = []
-    obs, reward, terminated, truncated, info = env.step(0)
-    temp = Node([starting_sequence[0]], terminated, None, starting_sequence[0], info)
-    node.append(temp)
-    for move in range (1, len(starting_sequence)):
-        obs, reward, terminated, truncated, info = env.step(starting_sequence[move])
-        temp = Node(starting_sequence[:move+1], False, node[move-1], starting_sequence[move], info)
-        node.append(temp)
-        node[move].create_childDict()
-    current = temp
-
-    #code for performance analysis 'time'
-    time_dict = {}
-    start_time = time.time()
-    time_distance_index = 200
-
-    while True:
-        
-        chosen_child = policy(current, env)
-        
-        print("CHOSEN MOVE", chosen_child.move_sequence[-1])
-        print("NEW MOVE SEQUENCE", chosen_child.move_sequence)
-        print("WORLD", world, "STAGE", stage)
-        env.reset()
-        terminated = False
-        for move in chosen_child.move_sequence:
-            if not terminated:
-                obs, reward, terminated, truncated, info = env.step(move)
-            #getting to new position
-        
-        chosen_child.terminated = terminated
-        chosen_child.info = info
-
-        child_level_index = chosen_child.info["stage"] * chosen_child.info["world"] - 1
-
-        print("Flag reached: ", chosen_child.info["flag_get"])
-        if (chosen_child.info["flag_get"]):
-            #Check for level completion
-
-            print("WORLD", world, "STAGE", stage, "complete")
-
-            print(chosen_child.move_sequence)
-            env.close()
-            return chosen_child.move_sequence, time_dict
-
-        else:
-            #Check for canonical death
-            if chosen_child.terminated == True:
-                print("\n\nRecalculating last ", INITIALRECALCULATIONS + non_simulated_deaths, " moves due to DEATH\n\n")
-                for backstep in range (INITIALRECALCULATIONS + non_simulated_deaths):
-                    if current.parent == None:
-                            print("Top node reached. No more parents")
-                            break
-                    current = current.parent
-                non_simulated_deaths = non_simulated_deaths + 1
-            else:
-                if len(current.move_sequence) > INITIALRECALCULATIONS + escapes:
-                    if stuck(chosen_child, escapes):
-                        print("\n\nRecalculating last ", INITIALRECALCULATIONS + escapes, " moves due to STUCK\n\n")
-                        for backstep in range (INITIALRECALCULATIONS + escapes):
-                            if current.parent == None:
-                                print("Top node reached. No more parents")
-                                break
-                            current = current.parent
-                        escapes = escapes + 1
-                    else:
-                        current = chosen_child
-                else:
-                    current = chosen_child
-
-            if(current.info["x_pos"] not in time_dict.keys() and current.info["x_pos"] >= time_distance_index):
-                print("saving ", time.time() - start_time, "to index: ", time_distance_index)
-                time_dict[time_distance_index] =  time.time() - start_time
-                time_distance_index += 200   
-            #current = check_child(chosen_child)
-
-            if (current.info["x_pos"] > 650):
-                return chosen_child.move_sequence, time_dict
-            env.reset()
             
 
+def main(world, stage, starting_sequence, mode):
+        #code for performance analysis 'time'
+        time_dict = {}
+        start_time = time.time()
+        time_distance_index = 200
+
+        #code for performance analysis 'steps'
+        steps_dict = {}
+        global steps
+
+        steps = 0
+        print("\n\n\n\n\n\n\n", steps)
+        
+        step_distance_index = 200
+
+        #code for performance analysis 'deaths'
+        deaths_dict = {}
+        global deaths
+        deaths = 0
+        death_distance_index = 200
+
+        #code for performance analysis 'score'
+        score_dict = {}
+        score_distance_index = 200
+        
+        non_simulated_deaths = 0
+        escapes = 0
+
+        make_string = "SuperMarioBros-" + str(world) + "-" + str(stage) + "-v0"
+        env = gym.make(make_string, apply_api_compatibility=True, render_mode=mode)
+        env = SkipFrame(env, skip=4)
+        print(SIMPLE_MOVEMENT)
+        env = JoypadSpace(env, SIMPLE_MOVEMENT)
+        done = True
+        env.reset()
+
+        #The following block of code allows me to run trials of learning with part of the route already cheated, for quicker testing 
+        #and not having to wait for mario to get up to the part i want to test every time.
+
+        node = []
+        obs, reward, terminated, truncated, info = env.step(0)
+        #performance
+        steps = steps + 1
+        temp = Node([starting_sequence[0]], terminated, None, starting_sequence[0], info)
+        node.append(temp)
+        for move in range (1, len(starting_sequence)):
+            obs, reward, terminated, truncated, info = env.step(starting_sequence[move])
+            #performance
+            steps = steps + 1
+            temp = Node(starting_sequence[:move+1], False, node[move-1], starting_sequence[move], info)
+            node.append(temp)
+            node[move].create_childDict()
+        current = temp
+
+
+        while True:
+            
+            chosen_child = policy(current, env)
+            
+            print("CHOSEN MOVE", chosen_child.move_sequence[-1])
+            print("NEW MOVE SEQUENCE", chosen_child.move_sequence)
+            print("WORLD", world, "STAGE", stage)
+            env.reset()
+            terminated = False
+            for move in chosen_child.move_sequence:
+                if not terminated:
+                    obs, reward, terminated, truncated, info = env.step(move)
+                    #performance
+                    steps = steps + 1
+                #getting to new position
+            
+            chosen_child.terminated = terminated
+            chosen_child.info = info
+
+            child_level_index = chosen_child.info["stage"] * chosen_child.info["world"] - 1
+
+            print("Flag reached: ", chosen_child.info["flag_get"])
+            if (chosen_child.info["flag_get"]):
+                #Check for level completion
+
+                print("WORLD", world, "STAGE", stage, "complete")
+
+                print(chosen_child.move_sequence)
+                env.close()
+                return chosen_child.move_sequence, time_dict, steps_dict, deaths_dict, score_dict
+
+            else:
+                #Check for canonical death
+                if chosen_child.terminated == True:
+                    #for performance
+                    deaths = deaths + 1
+                    print("\n\nRecalculating last ", INITIALRECALCULATIONS + non_simulated_deaths, " moves due to DEATH\n\n")
+                    for backstep in range (INITIALRECALCULATIONS + non_simulated_deaths):
+                        if current.parent == None:
+                                print("Top node reached. No more parents")
+                                break
+                        current = current.parent
+                    non_simulated_deaths = non_simulated_deaths + 1
+                else:
+                    if len(current.move_sequence) > INITIALRECALCULATIONS + escapes:
+                        if stuck(chosen_child, escapes):
+                            print("\n\nRecalculating last ", INITIALRECALCULATIONS + escapes, " moves due to STUCK\n\n")
+                            for backstep in range (INITIALRECALCULATIONS + escapes):
+                                if current.parent == None:
+                                    print("Top node reached. No more parents")
+                                    break
+                                current = current.parent
+                            escapes = escapes + 1
+                        else:
+                            current = chosen_child
+                    else:
+                        current = chosen_child
+
+                #for time performance analysis
+                if(current.info["x_pos"] not in time_dict.keys() and current.info["x_pos"] >= time_distance_index):
+                    print("saving ", time.time() - start_time, "to index: ", time_distance_index)
+                    time_dict[time_distance_index] =  time.time() - start_time
+                    time_distance_index += 200   
+
+                #for steps performance analysis
+                if(current.info["x_pos"] not in steps_dict.keys() and current.info["x_pos"] >= step_distance_index):
+                    print("saving ", steps, "to index: ", step_distance_index)
+                    steps_dict[step_distance_index] =  steps
+                    step_distance_index += 200  
+                print("STEPS: " ,steps)
+
+                #for death performance analysis
+                if(current.info["x_pos"] not in deaths_dict.keys() and current.info["x_pos"] >= death_distance_index):
+                    print("saving ", deaths, "to index: ", death_distance_index)
+                    deaths_dict[death_distance_index] =  deaths
+                    death_distance_index += 200   
+
+                #for score performance analysis
+                if(current.info["x_pos"] not in score_dict.keys() and current.info["x_pos"] >= score_distance_index):
+                    print("saving ", score, "to index: ", score_distance_index)
+                    score_dict[score_distance_index] = info["score"]
+                    score_distance_index += 200  
+
+                env.reset()
+
+
+
+#steps, and deaths scope should be fixed. Cant figure out the global scope.

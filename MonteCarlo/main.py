@@ -23,7 +23,6 @@ def main():
     f = open("levelwalkthroughs.txt", "a")
     f.write("\n\n\n\n")
 
-
     for world in range (starting_world,9):
 
         if not world <= starting_world:
@@ -31,8 +30,7 @@ def main():
 
         for stage in range (starting_stage,5): 
             
-            level_walkthroughs[world-1][stage-1] = internet.main(world, stage, starting_sequence, mode)
-            
+            level_walkthroughs[world-1][stage-1], useless_time_dict, useless_steps_dict, useless_deaths_dict, useless_score_dict = internet.main(world, stage, starting_sequence, mode)
             
             print("Talking from main. world ", world, "stage ", stage, "complete. The sequence to complete it is:", level_walkthroughs[world-1][stage-1])
             f.write("WORLD: ")
