@@ -16,8 +16,6 @@ from preprocess import SkipFrame, GrayScaleObservation, ResizeObservation
 from agent import MarioAgent
 from logger import MarioLogger
 
-
-
 import psutil
 import time
 
@@ -64,7 +62,7 @@ if __name__ == "__main__":
                     state, reward, terminated, truncated, info = env.step(action)
 
                     if(info["x_pos"] not in time_dict.keys() and info["x_pos"] >= distance_index):
-                        time_dict[distance_index] = time.time()
+                        time_dict[distance_index] = time.time() - start_time
                         distance_index += 200
                     
                     if terminated or info["flag_get"]:
@@ -77,7 +75,7 @@ if __name__ == "__main__":
 
         plt.title(" Time to reach certain distances.")
         plt.xlabel("Distance (x position)")
-        plt.yabel("Time taken (seconds)")
+        plt.ylabel("Time taken (seconds)")
         plt.plot(x,y)
         plt.show()
         plt.savefig("time_to_reach_certain_distances.png")
@@ -109,7 +107,7 @@ if __name__ == "__main__":
 
         plt.title(" Numbers of moves taken to reach certain distances.")
         plt.xlabel("Distance (x position)")
-        plt.yabel("Number of moves taken (step)")
+        plt.ylabel("Number of moves taken (step)")
         plt.plot(x,y)
         plt.show()
         plt.savefig("steps_to_reach_certain_distances.png")
@@ -140,7 +138,7 @@ if __name__ == "__main__":
 
         plt.title(" Deaths required to reach certain distances.")
         plt.xlabel("Distance (x position)")
-        plt.yabel("Times died (deaths)")
+        plt.ylabel("Times died (deaths)")
         plt.plot(x,y)
         plt.show()
         plt.savefig("deaths_to_reach_certain_distances.png")
@@ -172,7 +170,7 @@ if __name__ == "__main__":
 
         plt.title("Mean score over distance")
         plt.xlabel("Distance (x position) ")
-        plt.yabel("Times died (deaths) ")
+        plt.ylabel("Times died (deaths) ")
         plt.plot(x,y)
         plt.show()
         plt.savefig("mean_score_at_certain_distances.png")
@@ -205,7 +203,7 @@ if __name__ == "__main__":
 
         plt.title(" Time to reach certain distances.")
         plt.xlabel("Distance (x position)")
-        plt.yabel("Time taken (seconds)")
+        plt.ylabel("Time taken (seconds)")
         plt.plot(x,y)
         plt.show()
         plt.savefig("time_to_reach_certain_distances.png")
@@ -243,7 +241,7 @@ if __name__ == "__main__":
 
         plt.title(" Time to reach certain distances.")
         plt.xlabel("Distance (x position)")
-        plt.yabel("Time taken (seconds)")
+        plt.ylabel("Time taken (seconds)")
         plt.plot(x,y)
         plt.show()
         plt.savefig("time_to_reach_certain_distances.png")
