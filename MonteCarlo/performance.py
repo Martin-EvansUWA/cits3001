@@ -17,16 +17,20 @@ import psutil
 import time
 
 if __name__ == "__main__":
-    
-    
+
         level_walkthrough, time_dict, steps_dict, deaths_dict, score_dict = internet.main(1, 1, [0], "rgb")
 
-        print(time_dict)
+        print("Time dict: ", time_dict)
+        print("Steps dict: ", steps_dict)
+        print("deaths dict:", deaths_dict)
+        print("score dict:", score_dict)
+
+
         # plot time
         values = sorted(time_dict.items())
         x, y = zip(*values)
 
-        plt.title(" Time to reach certain distances.")
+        plt.title("Time to reach certain distances.")
         plt.xlabel("Distance (x position)")
         plt.ylabel("Time taken (seconds)")
         plt.plot(x,y)
@@ -52,7 +56,7 @@ if __name__ == "__main__":
 
         plt.title(" Deaths required to reach certain distances.")
         plt.xlabel("Distance (x position)")
-        plt.yabel("Times died (deaths)")
+        plt.ylabel("Times died (deaths)")
         plt.plot(x,y)
         plt.show()
         plt.savefig("deaths_to_reach_certain_distances.png")
@@ -63,7 +67,7 @@ if __name__ == "__main__":
 
         plt.title("Mean score over distance")
         plt.xlabel("Distance (x position) ")
-        plt.yabel("Times died (deaths) ")
+        plt.ylabel("Score ")
         plt.plot(x,y)
         plt.show()
         plt.savefig("mean_score_at_certain_distances.png")
@@ -140,7 +144,5 @@ if __name__ == "__main__":
         plt.savefig("time_to_reach_certain_distances.png")
 
     env.close()
-
-
 
 '''

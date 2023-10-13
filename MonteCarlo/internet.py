@@ -130,7 +130,7 @@ class Node:
         self.childDict = childDict
 
 
-def limitedSimulation(self, env):
+def limitedSimulation(self, env, steps, deaths):
     #This part might need to be changed from random to not random
     
     #print("Simulating starting from sequence", self.move_sequence)
@@ -145,12 +145,12 @@ def limitedSimulation(self, env):
 
             if self.info["flag_get"]:
                 print("goal reached before sim started")
-                return GOALREWARDBONUS
+                return GOALREWARDBONUS, steps, deaths
             elif self.terminated == True:
                 #for performance
                 deaths = deaths + 1
                 print("dead before sim started")
-                return DEATHREWARDPENALTY
+                return DEATHREWARDPENALTY, steps, deaths
             else:
                 obs, reward, self.terminated, truncated, self.info = env.step(move)
                 #performance
@@ -171,20 +171,20 @@ def limitedSimulation(self, env):
         if terminated == True:
             if info["flag_get"]:
                 print("Reached goal during sim")
-                return reward + GOALREWARDBONUS
+                return reward + GOALREWARDBONUS, steps, deaths
 
             else:
                 print("Dead during simulation (Shouldnt be called for goal)")
                 #for performance
                 deaths = deaths + 1
-                return reward
+                return reward, steps, deaths
                 #undecided if i want to incorporate my own penalty for death, becaause it shnould already have one (-15)
             
         count += 1
 
-    return returnValue
+    return returnValue, steps, deaths
 
-def explore_world(self, env):
+def explore_world(self, env, steps, deaths):
     
     #BEGINNING OF SELECTION STAGE
     node: Node
@@ -218,7 +218,8 @@ def explore_world(self, env):
     #BEGINNING OF EXPANSION STAGE
 
     if node.visitcount == 0:
-        node.total_reward = node.total_reward + limitedSimulation(node, env)
+        reward, steps, deaths = limitedSimulation(node, env, steps, deaths)
+        node.total_reward = node.total_reward + reward
         
     else:
         #print(node.visitcount, " visits at sequence:", node.action_index)
@@ -228,7 +229,8 @@ def explore_world(self, env):
             #select random child node for the simulation to begin at
         else:
             print("\n\n\n\n\nERROR\n\n\n\n\n\n")
-        node.total_reward = node.total_reward + limitedSimulation(node, env)
+        reward, steps, deaths = limitedSimulation(node, env, steps, deaths)
+        node.total_reward  = node.total_reward 
 
     node.visitcount = node.visitcount + 1
     
@@ -247,6 +249,7 @@ def explore_world(self, env):
         parent_node.visitcount += 1
     
     #BACKPROPAGATION UPDATING FINISHED
+    return steps, deaths
 
 def get_next_move(current):
         #i just changed it from reward to visit count
@@ -280,11 +283,11 @@ def stuck(node, escapes):
     print("x position from ", INITIALRECALCULATIONS + escapes, " moves ago: ", ago_node.info["x_pos"])
     return node.info["x_pos"] <= ago_node.info["x_pos"] and node.info["x_pos"] > ago_node.info["x_pos"] - 15
     
-def policy(current, env):
+def policy(current, env, steps, deaths):
     for i in range (NUMBEROFSIMULATIONS):
-        explore_world(current, env)
+        steps, deaths = explore_world(current, env, steps, deaths)
     chosen_child = get_next_move(current)
-    return chosen_child
+    return chosen_child, steps, deaths
 
 
             
@@ -297,16 +300,12 @@ def main(world, stage, starting_sequence, mode):
 
         #code for performance analysis 'steps'
         steps_dict = {}
-        global steps
-
         steps = 0
         print("\n\n\n\n\n\n\n", steps)
-        
         step_distance_index = 200
 
         #code for performance analysis 'deaths'
         deaths_dict = {}
-        global deaths
         deaths = 0
         death_distance_index = 200
 
@@ -345,8 +344,8 @@ def main(world, stage, starting_sequence, mode):
 
 
         while True:
-            
-            chosen_child = policy(current, env)
+            #performance parameters
+            chosen_child, steps, deaths = policy(current, env, steps, deaths)
             
             print("CHOSEN MOVE", chosen_child.move_sequence[-1])
             print("NEW MOVE SEQUENCE", chosen_child.move_sequence)
@@ -403,30 +402,37 @@ def main(world, stage, starting_sequence, mode):
                         current = chosen_child
 
                 #for time performance analysis
-                if(current.info["x_pos"] not in time_dict.keys() and current.info["x_pos"] >= time_distance_index):
+                if(time_distance_index not in time_dict.keys() and current.info["x_pos"] >= time_distance_index):
                     print("saving ", time.time() - start_time, "to index: ", time_distance_index)
                     time_dict[time_distance_index] =  time.time() - start_time
                     time_distance_index += 200   
 
                 #for steps performance analysis
-                if(current.info["x_pos"] not in steps_dict.keys() and current.info["x_pos"] >= step_distance_index):
+                if(step_distance_index not in steps_dict.keys() and current.info["x_pos"] >= step_distance_index):
                     print("saving ", steps, "to index: ", step_distance_index)
                     steps_dict[step_distance_index] =  steps
                     step_distance_index += 200  
-                print("STEPS: " ,steps)
-
+                
                 #for death performance analysis
-                if(current.info["x_pos"] not in deaths_dict.keys() and current.info["x_pos"] >= death_distance_index):
+                if(death_distance_index not in deaths_dict.keys() and current.info["x_pos"] >= death_distance_index):
                     print("saving ", deaths, "to index: ", death_distance_index)
                     deaths_dict[death_distance_index] =  deaths
                     death_distance_index += 200   
 
                 #for score performance analysis
-                if(current.info["x_pos"] not in score_dict.keys() and current.info["x_pos"] >= score_distance_index):
-                    print("saving ", score, "to index: ", score_distance_index)
+                if(score_distance_index not in score_dict.keys() and current.info["x_pos"] >= score_distance_index):
+                    print("saving ", info["score"], "to index: ", score_distance_index)
                     score_dict[score_distance_index] = info["score"]
                     score_distance_index += 200  
 
+                print("STEPS: " ,steps)
+
+                print("Deaths: ", deaths)
+                print("Time dict: ", time_dict)
+                print("Steps dict: ", steps_dict)
+                print("deaths dict:", deaths_dict)
+                print("score dict:", score_dict)
+    
                 env.reset()
 
 
