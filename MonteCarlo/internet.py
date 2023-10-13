@@ -5,6 +5,8 @@ import gym
 import math
 import random
 import time
+import psutil
+import os
 
 #MOVE SEQUENCE
 #0: ['NOOP']
@@ -293,6 +295,10 @@ def policy(current, env, steps, deaths):
             
 
 def main(world, stage, starting_sequence, mode):
+        #code for performance analysis 'memory'
+        avgmemorySum = 0
+        memCount = 0
+
         #code for performance analysis 'time'
         time_dict = {}
         start_time = time.time()
@@ -372,7 +378,7 @@ def main(world, stage, starting_sequence, mode):
 
                 print(chosen_child.move_sequence)
                 env.close()
-                return chosen_child.move_sequence, time_dict, steps_dict, deaths_dict, score_dict
+                return chosen_child.move_sequence, time_dict, steps_dict, deaths_dict, score_dict, (avgmemorySum / memCount)
 
             else:
                 #Check for canonical death
@@ -424,8 +430,12 @@ def main(world, stage, starting_sequence, mode):
                     print("saving ", info["score"], "to index: ", score_distance_index)
                     score_dict[score_distance_index] = info["score"]
                     score_distance_index += 200  
-
-                print("STEPS: " ,steps)
+                
+                #memory perf analysis
+                memory = psutil.Process().memory_info().rss / (1024**2)
+                avgmemorySum = avgmemorySum + memory
+                memCount = memCount + 1
+                print("Memory usage: ", memory)
 
                 print("Deaths: ", deaths)
                 print("Time dict: ", time_dict)
