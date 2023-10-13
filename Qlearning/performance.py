@@ -17,7 +17,7 @@ from preprocess import SkipFrame, GrayScaleObservation, ResizeObservation
 from agent import MarioAgent
 from logger import MarioLogger
 
-import psutil
+import psutil, os
 import time
 
 
@@ -105,7 +105,7 @@ if __name__ == "__main__":
         n_episodes = 1000
         step_count = 0
         for episode in range(n_episodes):
-            print(f"Episode: {episode}")
+            print(f"Episode: {episode}, {steps_dict}")
             current_state = env.reset()
             while True:
                     action = mario.act(current_state)
@@ -225,7 +225,7 @@ if __name__ == "__main__":
 
 
     if current_log == "hardware":
-        time_taken = 0
+        times = []
         start_time = time.time()
 
         # Setup Agent
@@ -239,7 +239,8 @@ if __name__ == "__main__":
                     state, reward, terminated, truncated, info = env.step(action)
 
                     if info["flag_get"]:
-                        time_taken = time.time() - start_time
+                        times.append(time.time() - start_time)
+                        print("Finished!")
                         break
 
                     if terminated:
@@ -247,7 +248,7 @@ if __name__ == "__main__":
                     
                     current_state = state
         # plot matplotlib
-        print(time_taken)
+        print(sum(times) / len(times))
     
     if current_log == "memory":
         time_taken = 0
@@ -276,7 +277,7 @@ if __name__ == "__main__":
                     
                     current_state = state
 
-                    net_memory.append(psutil.virtual_memory().percent)
+                    net_memory.append(psutil.Process().memory_info().rss / (1024**2))
                     avg = sum(net_memory) / len(net_memory)
         # plot matplotlib
         print(f"Average: {avg}")
