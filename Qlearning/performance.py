@@ -228,12 +228,13 @@ if __name__ == "__main__":
 
     if current_log == "hardware":
         times = []
+        init_time = time.time()
         start_time = time.time()
 
         # Setup Agent
         print(f"Device: {mario.device}...")
-        while time.time() < start_time + 120*(60):
-            print(f"Current Time: {(time.time() - start_time) / 60}")
+        while time.time() < init_time + 120*(60):
+            print(f"Time elapsed: {(time.time() - init_time) // 60} minutes.")
             current_state = env.reset() 
             while True:
                     action = mario.act(current_state)
