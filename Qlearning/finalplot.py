@@ -42,7 +42,7 @@ plt.cla()
 
 # steps
 
-ddqn_steps_dict = {200: 11570, 400: 23539, 600: 47593, 800: 73031, 1000: 96444, 1200: 158134, 1400: 193452, 1600: 238985, 1800: 289347, 2000: 361067, 2200: 451040, 2400: 519867, 2600: 589938, 2800: 675690, 3000: 771653}
+ddqn_steps_dict = {200: 27, 400: 105, 600: 164, 800: 563, 1000: 592, 1200: 2518, 1400: 2547, 1600: 52433, 1800: 59554, 2000: 169664, 2200: 169712, 2400: 170012}
 
 mcts_steps_dict =  {200: 11570, 400: 23539, 600: 47593, 800: 73031, 1000: 96444, 1200: 158134, 1400: 193452, 1600: 238985, 1800: 289347, 2000: 361067, 2200: 451040, 2400: 519867, 2600: 589938, 2800: 675690, 3000: 771653}
 
@@ -76,7 +76,7 @@ plt.savefig("finalgraphs/Steps taken to reach certain distances.")
 plt.cla()
 # deaths
 
-ddqn_deaths_dict = {200: 0, 400: 0, 600: 0, 800: 0, 1000: 0, 1200: 11, 1400: 11, 1600: 54, 1800: 168, 2000: 322, 2200: 322, 2400: 322, 2600: 528}
+ddqn_deaths_dict = {200: 0, 400: 0, 600: 0, 800: 0, 1000: 0, 1200: 2, 1400: 2, 1600: 234, 1800: 375, 2000: 845, 2200: 845, 2400: 845, 2600: 845}
 
 mcts_deaths_dict =  {200: 9, 400: 31, 600: 37, 800: 53, 1000: 57, 1200: 125, 1400: 185, 1600: 242, 1800: 303, 2000: 413, 2200: 413, 2400: 421, 2600: 439, 2800: 489, 3000: 489}
 
@@ -146,3 +146,35 @@ plt.title("Average scores at certain distances.")
 plt.savefig("finalgraphs/Average scores at certain distances.")
 
 plt.cla()
+
+# memory usage
+
+
+ddqn = 430.28 # megabytes
+mcts = 222.5 # megabytes
+
+data = {"DDQN": 430.28, "MCTS": 222.5}
+
+algorithms = list(data.keys())
+mem_usage = list(data.values()  )
+
+x = np.arange(2)
+fig = plt.figure()
+
+
+fig, ax = plt.subplots()
+plt.bar(algorithms, mem_usage,  color = 'maroon')
+plt.ylabel(" Memory usage (MB)")
+plt.xlabel(" Algorithm ")
+plt.title(" Memory usage by algorithm")
+
+plt.show()
+
+plt.savefig("finalgraphs/memory_usage")
+
+
+# laptop speed for level complete
+
+times = [1027.444876909256, 419.7998788356781, 2391.431916952133, 4022.487316131592]
+
+time_avg = sum(times) / len(times)
