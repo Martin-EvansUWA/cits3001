@@ -142,11 +142,13 @@ if __name__ == "__main__":
         plt.savefig("steps_to_reach_certain_distances.png")
 
     if current_log == "deaths":
+        # plot matplotlib
         deaths_dict = {}
-        n_episodes = 1000
         death_count = 0
+        n_episodes = 1000
         for episode in range(n_episodes):
-            print(f"Episode: {episode}")
+            if episode % 50 == 0:
+                print(f"Episode: {episode}, {death_count}")
             current_state = env.reset()
             while True:
                     action = mario.act(current_state)
@@ -230,7 +232,7 @@ if __name__ == "__main__":
 
         # Setup Agent
         print(f"Device: {mario.device}...")
-        while time.time() < start_time + 30*(60):
+        while time.time() < start_time + 120*(60):
             print(f"Current Time: {(time.time() - start_time) / 60}")
             current_state = env.reset() 
             while True:
@@ -240,7 +242,9 @@ if __name__ == "__main__":
 
                     if info["flag_get"]:
                         times.append(time.time() - start_time)
+                        print(times)
                         print("Finished!")
+                        start_time = time.time()
                         break
 
                     if terminated:
