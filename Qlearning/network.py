@@ -2,31 +2,42 @@ import torch
 from torch import nn
 import numpy as np
 
+import copy
+
 class MarioNetwork(nn.Module):
 
     # "qnetwork"
-    def __init__(self, input_shape, n_actions):
-        super(MarioNetwork, self).__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4),
+
+    def __init__(self, input_dim, output_dim):
+        super().__init__()
+        c, h, w = input_dim
+
+        if h != 84:
+            raise ValueError(f"Expecting input height: 84, got: {h}")
+        if w != 84:
+            raise ValueError(f"Expecting input width: 84, got: {w}")
+
+        self.online = nn.Sequential(
+            nn.Conv2d(in_channels=c, out_channels=32, kernel_size=8, stride=4),
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=2),
             nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1),
-            nn.ReLU()
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1),
+            nn.ReLU(),
+            nn.Flatten(),
+            nn.Linear(3136, 512),
+            nn.ReLU(),
+            nn.Linear(512, output_dim),
         )
 
-        conv_out_size = self._get_conv_out(input_shape)
-        self.fc = nn.Sequential(
-            nn.Linear(conv_out_size, 512),
-            nn.ReLU(),
-            nn.Linear(512, n_actions)
-        )
-    
-    def _get_conv_out(self, shape):
-        o = self.conv(torch.zeros(1, *shape))
-        return int(np.prod(o.size()))
+        self.target = copy.deepcopy(self.online)
 
-    def forward(self, x):
-        conv_out = self.conv(x).view(x.size()[0], -1)
-        return self.fc(conv_out)
+        # Q_target parameters are frozen.
+        for p in self.target.parameters():
+            p.requires_grad = False
+
+    def forward(self, input, model):
+        if model == "online":
+            return self.online(input)
+        elif model == "target":
+            return self.target(input)

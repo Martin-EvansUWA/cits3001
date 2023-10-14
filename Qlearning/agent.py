@@ -19,11 +19,6 @@ class MarioAgent:
 
 
         self.policy_net = MarioNetwork(state_dim, action_dim).to(self.device)
-        self.target_net = copy.deepcopy(self.policy_net)
-
-        for p in self.target_net.parameters():
-            p.requires_grad = False
-
 
         self.gamma = 0.99   
 
@@ -40,28 +35,26 @@ class MarioAgent:
         self.curr_step = 0
         self.save_distance = 40000
 
-        self.burnin = 1e4  # min. experiences before training
+        self.burnin = 10000
         self.learn_every = 3 
 
         self.sync_value = 1000
 
         self.TAU = 0.005
 
-    def act(self, state,eval=False):
+    def act(self, state):
         # EXPLORE
-        if np.random.rand() < self.exploration_rate and eval==False:
+        if np.random.rand() < self.exploration_rate:
             action = np.random.randint(self.action_dim)
         #EXPLOIT
         else:
-            with torch.no_grad():
-                state = state[0].__array__() if isinstance(state, tuple) else state.__array__()
-                state = torch.tensor(state, device=self.device).unsqueeze(0)
-                action_values = self.policy_net(state)
-                action = torch.argmax(action_values, axis=1).item()
-
+            state = state[0].__array__() if isinstance(state, tuple) else state.__array__()
+            state = torch.tensor(state, device=self.device).unsqueeze(0)
+            action_values = self.policy_net(state,"online")
+            action = torch.argmax(action_values, axis=1).item()
 
         self.exploration_rate *= self.exploration_rate_decay
-        self.exploration_rate = max(0.1,self.exploration_rate)
+        self.exploration_rate = max(self.exploration_rate_min,self.exploration_rate)
         self.curr_step += 1
         return action
 
@@ -128,11 +121,12 @@ class MarioAgent:
 
         # Update the table
 
-        # Q(s,a)
+        # Q_current
         current_Q = self.policy_net(state)[
             np.arange(0, self.batch_size), action
-        ]  # Q_online(s,a)
-
+        ]  
+        
+        # Q_target
         with torch.no_grad():
             next_state_Q = self.policy_net(next_state)
             best_action = torch.argmax(next_state_Q, axis=1)

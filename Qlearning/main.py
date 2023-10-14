@@ -19,7 +19,7 @@ from logger import MarioLogger
 if __name__ == "__main__":
     env_name = "SuperMarioBros-v0"
     env = gym.make(env_name, apply_api_compatibility=True, render_mode="rgb")
-    env = JoypadSpace(env, SIMPLE_MOVEMENT)
+    env = JoypadSpace(env, [["right"],["right","A"]])
     done = True
 
     env = SkipFrame(env, skip=4)
@@ -71,7 +71,6 @@ if __name__ == "__main__":
             while True:
                     
                     action = mario.act(current_state, eval=True)
-
 
                     state, reward, terminated, truncated, info = env.step(action)
 
