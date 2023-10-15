@@ -47,8 +47,8 @@ ddqn_steps_dict = {200: 27, 400: 105, 600: 164, 800: 563, 1000: 592, 1200: 2518,
 mcts_steps_dict =  {200: 11570, 400: 23539, 600: 47593, 800: 73031, 1000: 96444, 1200: 158134, 1400: 193452, 1600: 238985, 1800: 289347, 2000: 361067, 2200: 451040, 2400: 519867, 2600: 589938, 2800: 675690, 3000: 771653}
 
 
-mcts_values = sorted(ddqn_steps_dict.items())
-ddqn_values = sorted(mcts_steps_dict.items())
+mcts_values = sorted(mcts_steps_dict.items())
+ddqn_values = sorted(ddqn_steps_dict.items())
 
 x1, y1 = zip(*mcts_values)
 x2, y2 = zip(*ddqn_values)
@@ -82,8 +82,8 @@ mcts_deaths_dict =  {200: 9, 400: 31, 600: 37, 800: 53, 1000: 57, 1200: 125, 140
 
 
 
-mcts_values = sorted(ddqn_deaths_dict.items())
-ddqn_values = sorted(mcts_deaths_dict.items())
+mcts_values = sorted(mcts_deaths_dict.items())
+ddqn_values = sorted(ddqn_deaths_dict.items())
 
 x1, y1 = zip(*mcts_values)
 x2, y2 = zip(*ddqn_values)
@@ -167,8 +167,6 @@ plt.bar(algorithms, mem_usage,  color = 'maroon')
 plt.ylabel(" Memory usage (MB)")
 plt.xlabel(" Algorithm ")
 plt.title(" Memory usage by algorithm")
-
-plt.show()
 
 plt.savefig("finalgraphs/memory_usage")
 
