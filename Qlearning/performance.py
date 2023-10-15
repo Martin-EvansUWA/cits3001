@@ -286,11 +286,33 @@ if __name__ == "__main__":
                     avg = sum(net_memory) / len(net_memory)
         # plot matplotlib
         print(f"Average: {avg}")
-        values = sorted(time_dict.items())
-        x, y = zip(*values)
+    if current_log == "heat":
 
-        x = np.array(x)
-        y = np.array(y)
+        n_episodes = 1000
+        deaths = []
+
+        # Setup Agent
+        print(f"Device: {mario.device}...")
+        for episode in range(n_episodes):
+            if episode % 20 == 0:
+                print(f"Episode: {episode}")
+            current_state = env.reset() 
+            while True:
+                    action = mario.act(current_state)
+
+                    state, reward, terminated, truncated, info = env.step(action)
+
+
+                    if terminated or info["flag_get"] :
+                        deaths.append((info["x_pos"], info["y_pos"]))
+                        break
+                    
+                    current_state = state
+
+        # plot matplotlib\
+        print(deaths)
+        x =  [cell[0] for cell in deaths]
+        y =  [cell[1] for cell in deaths]
 
         x = np.array(x)
         y = np.array(y)
@@ -298,11 +320,11 @@ if __name__ == "__main__":
         plt.scatter(x,y)
         plt.ylim(0,None)
 
-        plt.title(" Time to reach certain distances.")
-        plt.xlabel("Distance (x position)")
-        plt.ylabel("Time taken (seconds)")
+        plt.title(" Deaths Heatmap")
+        plt.xlabel("Y position")
+        plt.ylabel("X position")
         plt.show()
-        plt.savefig("time_to_reach_certain_distances.png")
+        plt.savefig("ddqn_heatmap.png")
 
     env.close()
 
