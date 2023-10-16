@@ -51,7 +51,7 @@ if __name__ == "__main__":
                 action = mario.act(state)
                 next_state, reward, terminated, truncated, info = env.step(action)
 
-                mario.cache(state, next_state, action, reward, done)
+                mario.save_experience(state, next_state, action, reward, done)
                 loss, q = mario.learn()
                 state = next_state
 
@@ -60,7 +60,6 @@ if __name__ == "__main__":
                     break
             mario_logger.log_episode(episode)
             print(f"Episode: {episode}, Step: {mario.curr_step}, Rewards: {mario_logger.current_reward}, Avg_q: {mario_logger.avg_q}, Avg_loss: {mario_logger.avg_loss}")
-            
     else:
         for i in range(5):
             current_state = env.reset()

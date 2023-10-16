@@ -196,7 +196,7 @@ class ResizeObservation(gym.ObservationWrapper):
 
     def observation(self, observation):
         transforms = T.Compose(
-            [T.Resize(self.shape, antialias=True), T.Normalize(0, 255)]
+            [T.Resize(self.shape,antialias=False), T.Normalize(0, 255)]
         )
         observation = transforms(observation).squeeze(0)
         return observation
@@ -350,7 +350,7 @@ class Mario:
 class Mario(Mario):  # subclassing for continuity
     def __init__(self, state_dim, action_dim, save_dir):
         super().__init__(state_dim, action_dim, save_dir)
-        self.memory = TensorDictReplayBuffer(storage=LazyMemmapStorage(100000, device=torch.device("cpu"), scratch_dir= "./tmp"))
+        self.memory = TensorDictReplayBuffer(storage=LazyMemmapStorage(10000, device=torch.device("cpu"),scratch_dir="./tmp"))
         self.batch_size = 32
 
     def cache(self, state, next_state, action, reward, done):

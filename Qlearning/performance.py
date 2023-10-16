@@ -40,7 +40,7 @@ if __name__ == "__main__":
 
     current_log = sys.argv[1]
     mario = MarioAgent(state_dim=(4, 84, 84), action_dim=env.action_space.n, save_dir="./network_log", scratch_dir="./tmp")
-    checkpoint = torch.load("mario_net_22.chkpt", map_location=torch.device("cpu"))
+    checkpoint = torch.load("mario_vfinal.chkpt", map_location=torch.device("cpu"))
     mario.policy_net.load_state_dict(checkpoint["model"])
     mario.policy_net.online.eval()
     mario.policy_net.target.eval()
