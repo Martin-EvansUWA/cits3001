@@ -1,14 +1,17 @@
+'''
+Robert Beashel 23489302
+Martin Evans 23621647
+'''
+
 import agent
 
 from nes_py.wrappers import JoypadSpace
 import gym_super_mario_bros
 from gym_super_mario_bros.actions import SIMPLE_MOVEMENT
 import gym
-import math
-import random
 import sys
 
-#INPUT FORMAT = python3 main.py [mode ('rgb', 'human', ...)]
+#INPUT FORMAT = python3 main.py [render_mode ('rgb', 'human', ...)]
 
 def main():
     args = sys.argv[1:]
@@ -17,6 +20,7 @@ def main():
     level_walkthroughs = [[[] for stage in range(4)] for world in range(8)]
 
     f = open("levelwalkthroughs.txt", "a")
+    #At the end, the walkthroughs (action sequences) to all levels will be saved in this file
     f.write("\n\n\n\n")
 
     for world in range (1,9):

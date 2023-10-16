@@ -5,7 +5,7 @@ import gym
 from gym.wrappers.frame_stack import FrameStack
 
 import os
-import internet
+import cits3001.MonteCarlo.agent as agent
 
 import numpy as np
 import torch
@@ -18,7 +18,7 @@ import time
 
 if __name__ == "__main__":
         start_time = time.time()
-        level_walkthrough, time_dict, steps_dict, deaths_dict, score_dict, avgmemory = internet.main(1, 1, [0], "rgb")
+        level_walkthrough, time_dict, steps_dict, deaths_dict, score_dict, avgmemory, deaths_Coords = agent.main(1, 1, [0], "rgb")
         end_time = time.time()
         hardware = end_time - start_time
         print("Time dict: ", time_dict)
@@ -26,6 +26,7 @@ if __name__ == "__main__":
         print("deaths dict:", deaths_dict)
         print("score dict:", score_dict)
         print("Hardware: ", hardware)
+        print("Deaths coords: ", deaths_Coords)
 
 
         # plot time
