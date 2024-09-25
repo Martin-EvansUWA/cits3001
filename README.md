@@ -1,2 +1,2 @@
 # cits3001
-Mario Artifical Intelligence
+Artificial Intelligence project, creating two agents to attempt to beat Mario 64
